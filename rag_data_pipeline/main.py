@@ -40,10 +40,16 @@ from llama_index.core import SimpleDirectoryReader
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.readers.google import GoogleDriveReader
 
+from config.config import get_config
+
+
+    # Get configuration instance
+config = get_config()
+
 # --- 1. SET UP GOOGLE DRIVE LOADER ---
 # Note: Ensure 'credentials.json' is in the same directory.
 # The first time you run this, it will prompt you to authenticate in your browser.
-p = GoogleDriveReader(service_account_key_path="credentials.json")
+p = GoogleDriveReader(service_account_key_path =config.google_credentials_json_path())
 
 # --- 2. LOAD DOCUMENTS FROM A SPECIFIC FOLDER ---
 # Replace 'YOUR_FOLDER_ID' with the actual ID of your Google Drive folder.
