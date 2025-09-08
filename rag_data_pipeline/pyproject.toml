@@ -1,0 +1,16 @@
+[project]
+name = "rag-data-pipeline"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "dotenv>=0.9.9",
+    "google-api-python-client>=2.181.0",
+    "google-auth-httplib2>=0.2.0",
+    "google-auth-oauthlib>=1.2.2",
+    "llama-hub>=0.0.79.post1",
+    "llama-index>=0.13.6",
+    "numpy>=2.3.2",
+    "psycopg2>=2.9.10",
+]
