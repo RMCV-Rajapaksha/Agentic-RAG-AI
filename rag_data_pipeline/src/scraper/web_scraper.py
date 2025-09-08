@@ -6,12 +6,23 @@ import cloudscraper
 
 class WebScraper:
     def __init__(self):
-        """Initialize CloudScraper session with headers."""
+        """
+        Initialize the WebScraper instance.
+        Sets the base URL for relative link resolution.
+        """
         self.scraper = cloudscraper.create_scraper()
         self.base_url = "https://wso2.com"
 
     def _fetch_page(self, url):
-        """Fetch and return page HTML using CloudScraper."""
+        """
+        Fetch the HTML content of a given URL.
+
+        Args:
+            url (str): The URL of the page to fetch.
+
+        Returns:
+            str or None: The HTML content as a string if successful, None otherwise.
+        """
         try:
             response = self.scraper.get(url, timeout=15)
             response.raise_for_status()
@@ -22,7 +33,17 @@ class WebScraper:
 
     def get_markdown(self, url):
         """
-        Scrape page content and return metadata + Markdown.
+        Scrape the webpage and return its content as Markdown along with metadata.
+
+        Args:
+            url (str): The URL of the page to scrape.
+
+        Returns:
+            dict or None: A dictionary containing:
+                - 'url': the URL of the page
+                - 'metadata': a dictionary with 'title' and 'description'
+                - 'content_markdown': the body content converted to Markdown
+            Returns None if page fetch fails.
         """
         page_source = self._fetch_page(url)
         if not page_source:
@@ -44,7 +65,7 @@ class WebScraper:
         for tag in soup(["script", "style", "nav", "header", "footer"]):
             tag.decompose()
 
-        # Convert body to Markdown
+        # Convert body HTML to Markdown
         h = html2text.HTML2Text()
         h.ignore_images = True
         h.ignore_links = False
@@ -61,7 +82,14 @@ class WebScraper:
 
     def get_urls(self, url):
         """
-        Extract filtered URLs from the page.
+        Extract and filter relevant URLs from the webpage.
+
+        Args:
+            url (str): The URL of the page to extract links from.
+
+        Returns:
+            list[str]: A list of filtered and absolute URLs from the page.
+                        Only URLs starting with specific paths or domains are included.
         """
         page_source = self._fetch_page(url)
         if not page_source:
@@ -72,12 +100,11 @@ class WebScraper:
 
         filtered_links = []
         for link in all_links:
-            # Convert relative URLs to absolute
+            # Convert relative URLs to absolute URLs
             if link.startswith("/library") or link.startswith("/customers"):
-                absolute_url = self.base_url + link
-                link = absolute_url
+                link = self.base_url + link
 
-            # Apply filtering
+            # Apply filtering rules
             if (
                 link.startswith("https://wso2.com/library/blogs/")
                 or link.startswith("https://wso2.com/library/conference")

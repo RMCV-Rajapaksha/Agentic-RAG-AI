@@ -1,34 +1,62 @@
 import os
-from llama_index.core import SimpleDirectoryReader
-from llama_index.core.node_parser import SentenceSplitter
 from llama_index.readers.google import GoogleDriveReader
-
 from config.config import get_config
 
 
-    # Get configuration instance
-config = get_config()
+class GoogleDriveLoader:
+    """
+    A class to load documents from a Google Drive folder using LlamaIndex's GoogleDriveReader.
+    """
 
-# --- 1. SET UP GOOGLE DRIVE LOADER ---
-# Note: Ensure 'credentials.json' is in the same directory.
-# The first time you run this, it will prompt you to authenticate in your browser.
-p = GoogleDriveReader(service_account_key_path =config.google_credentials_json_path())
+    def __init__(self):
+        
+        self.config = get_config()
+        
+        self.reader = GoogleDriveReader(
+            service_account_key_path=self.config.google_credentials_json_path()
+        )
 
-# --- 2. LOAD DOCUMENTS FROM A SPECIFIC FOLDER ---
-# Replace 'YOUR_FOLDER_ID' with the actual ID of your Google Drive folder.
-folder_id = '1fnR7uqkbfI4FaO-wiuKemfTufWBL0k5t' 
-documents = p.load_data(folder_id=folder_id)
+    def load_documents(self, folder_id: str):
+        """
+        Loads all documents from the specified Google Drive folder.
+        
+        Args:
+            folder_id (str): Google Drive folder ID.
+        
+        Returns:
+            List of Document objects with metadata.
+        """
+        documents = self.reader.load_data(folder_id=folder_id)
 
-print(f"Successfully loaded {len(documents)} document(s) from Google Drive.\n")
+        if not documents:
+            print("No documents were found in the specified folder.")
+            return []
 
-# --- 3. INSPECT LOADED DOCUMENTS AND METADATA ---
-# The loader automatically extracts metadata like file name, creation date, etc.
-if documents:
-    print("--- Example Document and Metadata ---")
-    # Print content snippet of the first document
-    print(f"Content Snippet: '{documents[0].get_content()[:150]}...'") 
-    # Print all metadata for the first document
-    print(f"Metadata: {documents[0].metadata}\n")
-else:
-    print("No documents were found in the specified folder.")
+        print(f"Successfully loaded {len(documents)} document(s) from Google Drive.\n")
+        return documents
 
+    def preview_document(self, documents, index: int = 0):
+        """
+        Prints a content snippet and metadata of the specified document.
+        
+        Args:
+            documents (list): List of documents returned by load_documents().
+            index (int): Index of the document to preview (default: 0).
+        """
+        if not documents:
+            print("No documents available to preview.")
+            return
+
+        doc = documents[index]
+        print("--- Example Document and Metadata ---")
+        print(f"Content Snippet: '{doc.get_content()[:150]}...'")
+        print(f"Metadata: {doc.metadata}\n")
+
+
+# Example Usage
+if __name__ == "__main__":
+    folder_id = "1fnR7uqkbfI4FaO-wiuKemfTufWBL0k5t"  # Replace with your folder ID
+    
+    loader = GoogleDriveLoader()
+    docs = loader.load_documents(folder_id=folder_id)
+    loader.preview_document(docs)
