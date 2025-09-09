@@ -1,123 +1,100 @@
-# from config.config import get_config
 
-# def main():
-#     print("Hello from agentic-rag!")
-    
-#     # Get configuration instance
-#     config = get_config()
+from llama_index.core import SimpleDirectoryReader, StorageContext
+from llama_index.core import VectorStoreIndex
+from llama_index.vector_stores.postgres import PGVectorStore
+import textwrap
 
-#     # Access Database name
-#     db_name = config.db_name
-#     print(f"Database Name loaded: {'Yes' if db_name else 'No'}")
 
-#     # You can also get other environment variables
-#     # custom_var = config.get_env_var('CUSTOM_VAR', 'default_value')
-
-# if __name__ == "__main__":
-#     main()
+from sqlalchemy import make_url
 
 
 
-# from database.db import Database
-# import numpy as np
+import os
 
-# db = Database()
-
-# # Example 768-dim vector
-# vector = np.random.rand(1536).tolist()
-
-# chunked_text = "This is a test chunk."
-# metadata = {"page": 1, "document": "sample.pdf"}
-# source = "pdf"
-
-# db.insert_embedding(vector, chunked_text, metadata, source)
-
-# print("✅ Data inserted!")
-
-
-# import os
-# from llama_index.core import SimpleDirectoryReader
-# from llama_index.core.node_parser import SentenceSplitter
-# from llama_index.readers.google import GoogleDriveReader
-
-# from config.config import get_config
-
-
-#     # Get configuration instance
-# config = get_config()
-
-# # --- 1. SET UP GOOGLE DRIVE LOADER ---
-# # Note: Ensure 'credentials.json' is in the same directory.
-# # The first time you run this, it will prompt you to authenticate in your browser.
-# p = GoogleDriveReader(service_account_key_path =config.google_credentials_json_path())
-
-# # --- 2. LOAD DOCUMENTS FROM A SPECIFIC FOLDER ---
-# # Replace 'YOUR_FOLDER_ID' with the actual ID of your Google Drive folder.
-# folder_id = '1fnR7uqkbfI4FaO-wiuKemfTufWBL0k5t' 
-# documents = p.load_data(folder_id=folder_id)
-
-# print(f"Successfully loaded {len(documents)} document(s) from Google Drive.\n")
-
-# # --- 3. INSPECT LOADED DOCUMENTS AND METADATA ---
-# # The loader automatically extracts metadata like file name, creation date, etc.
-# if documents:
-#     print("--- Example Document and Metadata ---")
-#     # Print content snippet of the first document
-#     print(f"Content Snippet: '{documents[0].get_content()[:150]}...'") 
-#     # Print all metadata for the first document
-#     print(f"Metadata: {documents[0].metadata}\n")
-# else:
-#     print("No documents were found in the specified folder.")
-
-
-# # --- 4. CHUNK THE DOCUMENTS USING A NODE PARSER ---
-# # A Node represents a "chunk" of a source Document.
-# # Here, we use SentenceSplitter to chunk documents into smaller pieces.
-# parser = SentenceSplitter(
-#     chunk_size=512,  # The size of each chunk in tokens
-#     chunk_overlap=50 # The overlap between chunks
-# )
-
-# # This process creates 'Nodes' from the 'Documents'
-# nodes = parser.get_nodes_from_documents(documents)
-
-# print(f"--- Document Chunking ---")
-# print(f"Split {len(documents)} document(s) into {len(nodes)} nodes (chunks).\n")
-
-
-# # --- 5. INSPECT THE CHUNKS (NODES) ---
-# # Each node contains the chunked text and inherits the metadata from its parent document.
-# if nodes:
-#     print("--- Example Node (Chunk) ---")
-#     # Print the text content of the first node
-#     print(f"Node Content: '{nodes[0].get_content()}'")
-#     # Print the metadata of the first node
-#     print(f"Node Metadata: {nodes[0].metadata}")
+os.environ["OPENAI_API_KEY"] = "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"
 
 
 
-# from llama_index.core import Document
+import psycopg2
 
-# from src.chunkers.chunkers import DocumentChunker, MarkdownChunker
-
-# # Initialize chunkers
-# md_chunker = MarkdownChunker(chunk_size=300, chunk_overlap=50)
-# doc_chunker = DocumentChunker(chunk_size=300, chunk_overlap=50)
-
-# # Example markdown text
-# markdown_text = "# Title\nThis is some long markdown content..."
-# chunks = md_chunker.chunk_markdown(markdown_text)
-# print("Markdown Chunks:", chunks)
-
-# # Example LlamaIndex document
-# docs = [Document(text="This is a document from Google Drive or Web Scraping.")]
-# nodes = doc_chunker.chunk_documents(docs)
-# print("Document Chunks:", nodes)
+connection_string = "postgres://postgres:newpassword@localhost:5432"
 
 
+db_name = "vector_db"
+conn = psycopg2.connect(connection_string)
+conn.autocommit = True
 
-# from src.embeddings.openai_embeddings import create_embeddings
 
-# text = "This is a sample text to embed."
-# embedding_vector = create_embeddings(text)
-# print("Embedding length:", len(embedding_vector))
+documents = SimpleDirectoryReader("./data/paul_graham").load_data()
+print("Document ID:", documents[0].doc_id)
+
+with conn.cursor() as c:
+    c.execute(f"DROP DATABASE IF EXISTS {db_name}")
+    c.execute(f"CREATE DATABASE {db_name}")
+
+
+
+
+
+
+url = make_url(connection_string)
+vector_store = PGVectorStore.from_params(
+    database=db_name,
+    host=url.host,
+    password=url.password,
+    port=url.port,
+    user=url.username,
+    table_name="paul_graham_essay",
+    embed_dim=1536,  # openai embedding dimension
+    hnsw_kwargs={
+        "hnsw_m": 16,
+        "hnsw_ef_construction": 64,
+        "hnsw_ef_search": 40,
+        "hnsw_dist_method": "vector_cosine_ops",
+    },
+)
+
+storage_context = StorageContext.from_defaults(vector_store=vector_store)
+index = VectorStoreIndex.from_documents(
+    documents, storage_context=storage_context, show_progress=True
+)
+
+
+query_engine = index.as_query_engine()
+print("Query Engine Ready-----------------------------------------------------------")
+response = query_engine.query("What did the author do?")
+
+
+print(textwrap.fill(str(response), 100))
+
+
+
+print("---------------------------------------")
+response = query_engine.query("What happened in the mid 1980s?")
+
+print(textwrap.fill(str(response), 1000))
+
+
+vector_store = PGVectorStore.from_params(
+    database="vector_db",
+    host="localhost",
+    password="password",
+    port=5432,
+    user="postgres",
+    table_name="paul_graham_essay",
+    embed_dim=1536,  # openai embedding dimension
+    hnsw_kwargs={
+        "hnsw_m": 16,
+        "hnsw_ef_construction": 64,
+        "hnsw_ef_search": 40,
+        "hnsw_dist_method": "vector_cosine_ops",
+    },
+)
+
+index = VectorStoreIndex.from_vector_store(vector_store=vector_store)
+query_engine = index.as_query_engine()
+
+
+
+
+

@@ -27,6 +27,13 @@ class Config:
             self._db_host = os.getenv('DB_HOST', 'localhost')
             self._db_port = int(os.getenv('DB_PORT', '5432'))  
 
+
+            self._db_connection_string = self._get_required_env('CONNECTION_STRING')
+            self._db_name = self._get_required_env('DB_NAME')
+            self._db_table_name = self._get_required_env('DB_TABLE_NAME')
+
+
+
             # Google service account credentials from env
             self._google_credentials = {
                 "type": os.getenv("GOOGLE_TYPE"),
@@ -75,6 +82,18 @@ class Config:
     @property
     def db_port(self) -> int:
         return self._db_port
+
+    @property
+    def db_connection_string(self) -> str:
+        return self._db_connection_string
+
+    @property
+    def db_table_name(self) -> str:
+        return self._db_table_name
+    
+    @property
+    def db_name(self) -> str:
+        return self._db_name
 
     @property
     def google_credentials(self) -> dict:
