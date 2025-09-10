@@ -32,7 +32,7 @@ class Config:
             self._db_name = self._get_required_env('DB_NAME')
             self._db_table_name = self._get_required_env('DB_TABLE_NAME')
 
-
+            self._google_drive_folder_id = self._get_required_env('FOLDER_ID')
 
             # Google service account credentials from env
             self._google_credentials = {
@@ -94,6 +94,10 @@ class Config:
     @property
     def db_name(self) -> str:
         return self._db_name
+    
+    @property
+    def google_drive_folder_id(self) -> str:
+        return self._google_drive_folder_id
 
     @property
     def google_credentials(self) -> dict:

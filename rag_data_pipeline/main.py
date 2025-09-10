@@ -1,100 +1,124 @@
+# Core LlamaIndex imports
+from llama_index.core import Document
+from llama_index.core.ingestion import IngestionPipeline
+from llama_index.core.node_parser import SentenceSplitter
+from llama_index.core.extractors import TitleExtractor
+from llama_index.embeddings.openai import OpenAIEmbedding
 
-from llama_index.core import SimpleDirectoryReader, StorageContext
-from llama_index.core import VectorStoreIndex
-from llama_index.vector_stores.postgres import PGVectorStore
-import textwrap
-
-
-from sqlalchemy import make_url
-
-
+# Local imports
+from database.db import DatabaseConnection
+from src.scraper.web_scraper import WebScraper
+from src.drive_reader.drive_reader import GoogleDriveLoader
+from config.config import get_config
 
 import os
+from typing import List
 
-os.environ["OPENAI_API_KEY"] = "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"
-
-
-
-import psycopg2
-
-connection_string = "postgres://postgres:newpassword@localhost:5432"
+# Set OpenAI API key from config
+config = get_config()
+os.environ["OPENAI_API_KEY"] = config.openai_api_key
 
 
-db_name = "vector_db"
-conn = psycopg2.connect(connection_string)
-conn.autocommit = True
+class RAGDataIngestion:
+    """
+    RAG data ingestion pipeline - ingests web URLs and Google Drive data into database
+    """
+    
+    def __init__(self):
+        self.config = get_config()
+        self.db_connection = DatabaseConnection()
+        self.web_scraper = WebScraper()
+        self.drive_loader = GoogleDriveLoader()
+        
+        # Initialize database
+        self.db_connection.create_database_if_not_exists()
+        self.vector_store = self.db_connection.get_vector_store()
+        
+        # Create ingestion pipeline
+        self.pipeline = IngestionPipeline(
+            transformations=[
+                SentenceSplitter(chunk_size=512, chunk_overlap=100),
+                TitleExtractor(),
+                OpenAIEmbedding(),
+            ],
+            vector_store=self.vector_store,
+        )
+        
+    def scrape_urls_to_documents(self, urls: List[str]) -> List[Document]:
+        """Scrape URLs and convert to Documents"""
+        documents = []
+        
+        for url in urls:
+            scraped_data = self.web_scraper.get_markdown(url)
+            
+            if scraped_data:
+                doc = Document(
+                    text=scraped_data['content_markdown'],
+                    metadata={
+
+                        'url': scraped_data['url'],
+                        'title': scraped_data['metadata']['title'],
+                        'description': scraped_data['metadata']['description']
+                    }
+                )
+                documents.append(doc)
+                
+        return documents
+    
+    def load_drive_documents(self, folder_id: str) -> List[Document]:
+        """Load documents from Google Drive folder"""
+        documents = self.drive_loader.load_documents(folder_id)
+        
+        # Add source metadata
+        for doc in documents:
+            doc.metadata['source'] = 'google_drive'
+            doc.metadata['folder_id'] = folder_id
+            
+        return documents
+    
+    def ingest_documents(self, documents: List[Document]) -> None:
+        """Process and ingest documents into the vector database"""
+        if not documents:
+            return
+            
+        # Run the ingestion pipeline
+        self.pipeline.run(documents=documents, show_progress=True)
 
 
-documents = SimpleDirectoryReader("./data/paul_graham").load_data()
-print("Document ID:", documents[0].doc_id)
+def main():
+    """
+    Main function - ingests data from web URLs and Google Drive into database
+    """
+    # Initialize pipeline
+    pipeline = RAGDataIngestion()
+    
+    # URLs to scrape (replace with your actual URLs)
+    urls_to_scrape = [
+        "https://wso2.ai/",
+        "https://wso2.com/api-management/ai/",
+        "https://wso2.com/integration/ai/",
+        "https://wso2.com/identity-and-access-management/ai/",
+        "https://wso2.com/internal-developer-platform/ai/"
 
-with conn.cursor() as c:
-    c.execute(f"DROP DATABASE IF EXISTS {db_name}")
-    c.execute(f"CREATE DATABASE {db_name}")
-
-
-
-
-
-
-url = make_url(connection_string)
-vector_store = PGVectorStore.from_params(
-    database=db_name,
-    host=url.host,
-    password=url.password,
-    port=url.port,
-    user=url.username,
-    table_name="paul_graham_essay",
-    embed_dim=1536,  # openai embedding dimension
-    hnsw_kwargs={
-        "hnsw_m": 16,
-        "hnsw_ef_construction": 64,
-        "hnsw_ef_search": 40,
-        "hnsw_dist_method": "vector_cosine_ops",
-    },
-)
-
-storage_context = StorageContext.from_defaults(vector_store=vector_store)
-index = VectorStoreIndex.from_documents(
-    documents, storage_context=storage_context, show_progress=True
-)
-
-
-query_engine = index.as_query_engine()
-print("Query Engine Ready-----------------------------------------------------------")
-response = query_engine.query("What did the author do?")
+    ]
+    
+   
+    drive_folder_id = config.google_drive_folder_id
+    
+    try:
+        # Load documents from both sources
+        url_documents = pipeline.scrape_urls_to_documents(urls_to_scrape)
+        drive_documents = pipeline.load_drive_documents(drive_folder_id)
+        
+        # Combine and ingest all documents
+        all_documents = url_documents + drive_documents
+        pipeline.ingest_documents(all_documents)
+        
+        print("Data ingestion completed successfully!")
+        
+    except Exception as e:
+        print(f"An error occurred during data ingestion: {e}")
 
 
-print(textwrap.fill(str(response), 100))
-
-
-
-print("---------------------------------------")
-response = query_engine.query("What happened in the mid 1980s?")
-
-print(textwrap.fill(str(response), 1000))
-
-
-vector_store = PGVectorStore.from_params(
-    database="vector_db",
-    host="localhost",
-    password="password",
-    port=5432,
-    user="postgres",
-    table_name="paul_graham_essay",
-    embed_dim=1536,  # openai embedding dimension
-    hnsw_kwargs={
-        "hnsw_m": 16,
-        "hnsw_ef_construction": 64,
-        "hnsw_ef_search": 40,
-        "hnsw_dist_method": "vector_cosine_ops",
-    },
-)
-
-index = VectorStoreIndex.from_vector_store(vector_store=vector_store)
-query_engine = index.as_query_engine()
-
-
-
-
-
+if __name__ == "__main__":
+    main()
