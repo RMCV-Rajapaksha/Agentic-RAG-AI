@@ -4,4 +4,10 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "llama-index>=0.14.0",
+    "llama-index-vector-stores-postgres>=0.6.6",
+    "psycopg2>=2.9.10",
+    "psycopg2-binary>=2.9.10",
+    "sqlalchemy>=2.0.43",
+]
