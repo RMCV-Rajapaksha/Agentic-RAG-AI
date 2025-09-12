@@ -80,13 +80,45 @@ def main():
                 # Print result header with score
                 print(f"➡️  Result {i + 1} | Similarity Score: {res.score:.4f}")
                 
+                # Display specific metadata: source name and website URL
+                if hasattr(res.node, 'metadata') and res.node.metadata:
+                    print("    📋 Source Information:")
+                    
+                    # Look for source name (could be under different keys)
+                    source_name = None
+                    for key in ['source', 'source_name', 'file_name', 'document_name', 'title']:
+                        if key in res.node.metadata:
+                            source_name = res.node.metadata[key]
+                            break
+                    
+                    if source_name:
+                        print(f"       📄 Source: {source_name}")
+                    
+                    # Look for website URL (could be under different keys)
+                    website_url = None
+                    for key in ['url', 'website_url', 'source_url', 'web_url', 'link']:
+                        if key in res.node.metadata:
+                            website_url = res.node.metadata[key]
+                            break
+                    
+                    if website_url:
+                        print(f"       🌐 Website URL: {website_url}")
+                    
+                    # If neither source nor URL found, show what metadata is available
+                    if not source_name and not website_url:
+                        print("       ⚠️  No source name or URL found in metadata")
+                        print(f"       Available metadata keys: {list(res.node.metadata.keys())}")
+                    
+                    print()
+                
                 # Get, clean, and wrap the node content for readability
                 content = res.node.get_content().strip().replace('\n', ' ')
                 wrapped_text = text_wrapper.fill(content)
                 
                 # Indent the wrapped text block
+                print("    📄 Content:")
                 for line in wrapped_text.split('\n'):
-                    print(f"    {line}")
+                    print(f"       {line}")
 
                 # Print a separator for all but the last result
                 if i < len(results) - 1:

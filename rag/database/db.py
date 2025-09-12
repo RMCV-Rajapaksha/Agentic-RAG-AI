@@ -81,6 +81,9 @@ class DatabaseConnection:
         )
         
         return vector_store
+    
+
+
     def query_vector_store(
         self,
         query_text: str,
@@ -96,8 +99,8 @@ class DatabaseConnection:
             similarity_top_k (int): The number of top similar results to retrieve.
 
         Returns:
-            List[NodeWithScore]: A list of nodes, each containing the text chunk
-                                 and its corresponding similarity score.
+            List[NodeWithScore]: A list of nodes, each containing the text chunk,
+                                 metadata, and similarity score.
         """
         if not query_text:
             logger.warning("Query text is empty. Returning an empty list.")
@@ -123,9 +126,13 @@ class DatabaseConnection:
             nodes_with_scores = []
             if result.nodes and result.similarities:
                 for node, similarity in zip(result.nodes, result.similarities):
+                    # Log metadata for debugging
+                    if hasattr(node, 'metadata') and node.metadata:
+                        logger.debug(f"Node metadata: {node.metadata}")
+                    
                     nodes_with_scores.append(NodeWithScore(node=node, score=similarity))
 
-            logger.info(f"Found {len(nodes_with_scores)} related text chunks.")
+            logger.info(f"Found {len(nodes_with_scores)} related text chunks with metadata.")
             return nodes_with_scores
 
         except Exception as e:
