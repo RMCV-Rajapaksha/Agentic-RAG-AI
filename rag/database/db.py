@@ -126,7 +126,7 @@ class DatabaseConnection:
             nodes_with_scores = []
             if result.nodes and result.similarities:
                 for node, similarity in zip(result.nodes, result.similarities):
-                    # Log metadata for debugging
+                 
                     if hasattr(node, 'metadata') and node.metadata:
                         logger.debug(f"Node metadata: {node.metadata}")
                     
@@ -137,5 +137,5 @@ class DatabaseConnection:
 
         except Exception as e:
             logger.error(f"An error occurred during vector store query: {e}")
-            # Depending on desired behavior, you might want to return [] or raise
+          
             raise

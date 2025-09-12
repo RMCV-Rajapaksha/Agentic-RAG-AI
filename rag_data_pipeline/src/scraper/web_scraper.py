@@ -58,7 +58,8 @@ class WebScraper:
 
         metadata = {
             "title": title.strip(),
-            "description": description.strip()
+            "description": description.strip(),
+            "source": url
         }
 
         # Remove unnecessary tags
