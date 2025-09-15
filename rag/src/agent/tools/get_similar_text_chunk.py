@@ -41,8 +41,13 @@ def get_chunks(query_text: str) -> str:
         for i, res in enumerate(results):
             content = res.node.get_content().strip().replace('\n', ' ')
             source = res.node.metadata.get('source_name', 'N/A')
+            url = res.node.metadata.get('url', 'N/A')
+            title = res.node.metadata.get('title', 'N/A')
             
-            formatted_output += f"--- Chunk {i + 1} (Source: {source}) ---\n"
+            formatted_output += f"--- Chunk {i + 1} ---\n"
+            formatted_output += f"Source: {source}\n"
+            formatted_output += f"URL: {url}\n"
+            formatted_output += f"Title: {title}\n"
             formatted_output += f"Content: {content}\n\n"
 
 
