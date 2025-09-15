@@ -8,8 +8,6 @@ import os
 
 
 config = get_config()
-os.environ["OPENAI_API_KEY"] = config.openai_api_key
-
 # Global variable to store URLs for the agent to access
 extracted_urls = []
 
@@ -20,7 +18,7 @@ def get_chunks(query_text: str) -> str:
     """
     global extracted_urls
     extracted_urls = []  
-    
+
     print(f"Tool 'get_chunks' called with query: '{query_text}'")
     
     if not query_text:

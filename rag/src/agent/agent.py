@@ -18,7 +18,7 @@ load_dotenv()
 
 
 config = get_config()
-os.environ["OPENAI_API_KEY"] = config.openai_api_key
+
 
 
 class KnowledgeResponse(BaseModel):

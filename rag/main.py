@@ -2,7 +2,14 @@ import asyncio
 import json
 from fastapi import FastAPI
 from pydantic import BaseModel
+from config.config import get_config
 from src.agent.agent import run_agent_async
+import os
+
+
+config = get_config()
+os.environ["OPENAI_API_KEY"] = config.openai_api_key
+
 
 app = FastAPI(title="Agentic RAG API", description="FastAPI server for Agentic RAG system", version="1.0.0")
 
