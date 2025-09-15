@@ -10,12 +10,17 @@ import os
 config = get_config()
 os.environ["OPENAI_API_KEY"] = config.openai_api_key
 
+# Global variable to store URLs for the agent to access
+extracted_urls = []
+
 def get_chunks(query_text: str) -> str:
     """
     Searches a vector database for text chunks similar to the input query.
     Returns the top 3 most relevant chunks as a formatted string.
     """
-
+    global extracted_urls
+    extracted_urls = []  
+    
     print(f"Tool 'get_chunks' called with query: '{query_text}'")
     
     if not query_text:
@@ -38,11 +43,16 @@ def get_chunks(query_text: str) -> str:
             return f"No relevant text chunks found for the query: '{query_text}'"
 
         formatted_output = f"Found {len(results)} relevant chunks for '{query_text}':\n\n"
+        
         for i, res in enumerate(results):
             content = res.node.get_content().strip().replace('\n', ' ')
             source = res.node.metadata.get('source_name', 'N/A')
             url = res.node.metadata.get('url', 'N/A')
             title = res.node.metadata.get('title', 'N/A')
+            
+            # Store unique URLs
+            if url != 'N/A' and url.startswith('http') and url not in extracted_urls:
+                extracted_urls.append(url)
             
             formatted_output += f"--- Chunk {i + 1} ---\n"
             formatted_output += f"Source: {source}\n"

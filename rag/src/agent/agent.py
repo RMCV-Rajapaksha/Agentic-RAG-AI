@@ -1,5 +1,7 @@
 import os
 import asyncio
+import json
+from typing import List
 from dotenv import load_dotenv
 from pydantic import BaseModel
 
@@ -22,7 +24,7 @@ os.environ["OPENAI_API_KEY"] = config.openai_api_key
 class KnowledgeResponse(BaseModel):
     """The final structured response for the user."""
     answer: str
-    url: str
+    url: List[str]
 
 
 
@@ -35,9 +37,6 @@ async def run_agent_async(query: str):
         raise ValueError("The OPENAI_API_KEY is not set in config.")
     
     llm = OpenAI(model="gpt-4o", api_key=api_key)
-    
-    
-    
     
     custom_system_prompt="""
             You are the "WSO2 Knowledge Assistant", a specialized AI expert on WSO2 products and technologies. Your sole purpose is to provide accurate and helpful answers based *exclusively* on the information retrieved from the internal WSO2 knowledge base.
@@ -54,23 +53,43 @@ async def run_agent_async(query: str):
 
             5.  **Concise and Relevant Answers:** Synthesize the information from the retrieved chunks into a clear, concise, and helpful answer. Directly address the user's question without adding extraneous details or opinions.
 
-            6. **give the answer as well formated markdown with url at the end:**
+            6. **Output Format Requirements:**
+               - Format your answer as well-organized markdown with proper headers, bullet points, and structure
+               - Provide a comprehensive answer based on the retrieved information
             """
    
     agent = ReActAgent(
         tools=[get_chunks_tool],
         llm=llm,
-        output_cls=KnowledgeResponse,
         verbose=True,
         system_prompt=custom_system_prompt
     )
     
     print(f"\nAsking the agent: {query}\n")
     
-  
     handler = agent.run(query)
-    
-    
     response = await handler
     
-    return response
+    # Get URLs from the global variable set by the tool
+    from .tools.get_similar_text_chunk import extracted_urls
+    urls = extracted_urls.copy() if extracted_urls else []
+    
+    # Format the answer
+    answer = str(response)
+    
+    # Create a well-formatted markdown answer
+    if "WSO2" in answer and len(answer) > 50:
+        # Format as markdown
+        formatted_answer = f"""# WSO2 AI-Based Products and Solutions
+
+{answer}
+
+## Sources
+The information above was retrieved from the WSO2 knowledge base."""
+    else:
+        formatted_answer = answer
+    
+    return KnowledgeResponse(
+        answer=formatted_answer,
+        url=urls
+    )
