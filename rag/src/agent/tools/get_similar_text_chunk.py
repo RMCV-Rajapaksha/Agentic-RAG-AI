@@ -30,7 +30,7 @@ def get_chunks(query_text: str) -> str:
         results = db_connection.query_vector_store(
             query_text=query_text,
             embed_model=embed_model,
-            similarity_top_k=5,  
+            similarity_top_k=7,  
         )
 
        
@@ -44,7 +44,9 @@ def get_chunks(query_text: str) -> str:
             
             formatted_output += f"--- Chunk {i + 1} (Source: {source}) ---\n"
             formatted_output += f"Content: {content}\n\n"
-            
+
+
+        print(formatted_output)    
         return formatted_output.strip()
 
     except Exception as e:
