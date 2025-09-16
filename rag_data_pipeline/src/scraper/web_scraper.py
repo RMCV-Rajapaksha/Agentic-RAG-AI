@@ -115,21 +115,3 @@ class WebScraper:
 
         return filtered_links
 
-
-# --- Example usage ---
-if __name__ == "__main__":
-    target_url = "https://wso2.com/library/?area=api-management,integration,identity-and-access-management,internal-developer-platform,corporate,engineering&search=AI"
-
-    scraper = WebScraper()
-
-    # Get page as markdown
-    scraped_data = scraper.get_markdown(target_url)
-    if scraped_data:
-        print("\n--- Scraped Markdown Data ---")
-        print(json.dumps(scraped_data, indent=4))
-
-    # Get all URLs from the page
-    urls = scraper.get_urls(target_url)
-    print("\n--- Extracted URLs ---")
-    print(len(urls), "URLs found.")
-    print(urls)

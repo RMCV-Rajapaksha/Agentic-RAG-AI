@@ -14,6 +14,7 @@ from docling.document_converter import DocumentConverter
 
 # Local imports
 from database.db import DatabaseConnection
+from src.youtube_transcripts.youtube_transcript_to_md import YouTubeTranscriptScraper
 from src.scraper.web_scraper import WebScraper
 from src.drive_reader.drive_reader import GoogleDriveLoader
 from config.config import get_config
@@ -50,12 +51,13 @@ class RAGDataIngestion:
         self.web_scraper = WebScraper()
         self.drive_loader = GoogleDriveLoader()
         self.document_converter = DocumentConverter()
+        self.youtube_scraper = YouTubeTranscriptScraper()
+
         
-        # Initialize database
         self.db_connection.create_database_if_not_exists()
         self.vector_store = self.db_connection.get_vector_store()
         
-        # Create ingestion pipeline
+
         self.pipeline = IngestionPipeline(
             transformations=[
                 WhitespaceCleaner(),
@@ -83,10 +85,7 @@ class RAGDataIngestion:
     def scrape_web_urls(self, urls: List[str]) -> List[Document]:
         """Scrape web URLs and return Documents with markdown content"""
         documents = []
-        
-
-
-
+    
         print("Scraping web URLs for markdown content...")
         for url in urls:
             scraped_data = self.web_scraper.get_markdown(url)
@@ -108,7 +107,7 @@ class RAGDataIngestion:
         """Load documents from Google Drive folder"""
         documents = self.drive_loader.load_documents(folder_id)
         
-        # Add source metadata
+        
         for doc in documents:
             doc.metadata['source'] = 'google_drive'
             doc.metadata['folder_id'] = folder_id
@@ -119,11 +118,11 @@ class RAGDataIngestion:
         """Load documents from Google Drive folder and convert to markdown using Docling"""
         documents = []
         
-        # Get document paths from Google Drive
+
         drive_documents = self.drive_loader.load_documents(folder_id)
         
         for doc in drive_documents:
-            # If the document has a file path, convert it using Docling
+          
             if 'file_path' in doc.metadata:
                 file_path = doc.metadata['file_path']
                 print(f"Converting document from Google Drive: {file_path}")
@@ -141,7 +140,7 @@ class RAGDataIngestion:
                     )
                     documents.append(converted_doc)
             else:
-                # Fallback to original document if no file path
+                
                 doc.metadata['source'] = 'google_drive'
                 doc.metadata['folder_id'] = folder_id
                 documents.append(doc)
@@ -154,7 +153,7 @@ class RAGDataIngestion:
         if not documents:
             return
             
-        # Run the ingestion pipeline
+       
         self.pipeline.run(documents=documents, show_progress=True)
 
 
@@ -162,36 +161,57 @@ def main():
     """
     Main function - ingests data from web URLs and Google Drive into database
     """
-    # Initialize pipeline
+
     pipeline = RAGDataIngestion()
     
-    # URLs to scrape (replace with your actual URLs)
+
     urls_to_scrape = [
-        "https://wso2.ai/",
-        "https://wso2.com/api-management/ai/",
-        "https://wso2.com/integration/ai/",
-        "https://wso2.com/identity-and-access-management/ai/",
-        "https://wso2.com/internal-developer-platform/ai/"
+        # "https://wso2.ai/",
+        # "https://wso2.com/api-management/ai/",
+        # "https://wso2.com/integration/ai/",
+        # "https://wso2.com/identity-and-access-management/ai/",
+        # "https://wso2.com/internal-developer-platform/ai/"
+    ]
+
+
+    urls_to_videos =[
+        "https://www.youtube.com/watch?v=LtcHVLkkxjk",
+        "https://www.youtube.com/watch?v=LtcHVLkkxjk",
+        "https://www.youtube.com/watch?v=LtcHVLkkxjk",
+        "https://www.youtube.com/watch?v=LtcHVLkkxjk"
     ]
    
     drive_folder_id = config.google_drive_folder_id
     
     try:
         all_documents = []
-        
-        # Scrape web URLs and get markdown content
+
+        if urls_to_videos:
+            for link in urls_to_videos:
+                video_data = pipeline.youtube_scraper.get_transcript(link)
+               
+                video_doc = Document(
+                    text=video_data['content_markdown'],
+                    metadata={
+                        'url': video_data['url'],
+                        'title': video_data['metadata'].get('title', ''),
+                        'description': video_data['metadata'].get('description', ''),
+                        'source': 'youtube_transcript'
+                    }
+                )
+                all_documents.append(video_doc)
+
         if urls_to_scrape:
             url_documents = pipeline.scrape_web_urls(urls_to_scrape)
             all_documents.extend(url_documents)
         
-        # Load documents from Google Drive (with Docling conversion)
         if drive_folder_id:
             print("Loading and converting Google Drive documents...")
             drive_documents = pipeline.convert_drive_documents_to_markdown(drive_folder_id)
             print(f"-----------Loaded and converted {len(drive_documents)} documents from Google Drive.")
             all_documents.extend(drive_documents)
         
-        # Ingest all documents
+        
         if all_documents:
             print(f"Ingesting {len(all_documents)} documents...")
             pipeline.ingest_documents(all_documents)
