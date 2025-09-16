@@ -24,4 +24,5 @@ dependencies = [
     "html2text>=2024.2.26",
     "openai>=1.0.0",
     "tiktoken>=0.5.0",
+    "docling>=2.52.0",
 ]

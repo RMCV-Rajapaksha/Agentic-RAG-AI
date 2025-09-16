@@ -81,11 +81,10 @@ async def run_agent_async(query: str):
     if "WSO2" in answer and len(answer) > 50:
         # Format as markdown
         formatted_answer = f"""# WSO2 AI-Based Products and Solutions
-
-{answer}
-
-## Sources
-The information above was retrieved from the WSO2 knowledge base."""
+                                {answer}
+                                ## Sources
+                                The information above was retrieved from the WSO2 knowledge base."""
+        
     else:
         formatted_answer = answer
     
