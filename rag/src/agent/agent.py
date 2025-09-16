@@ -14,6 +14,7 @@ from config.config import get_config
 from .tools.get_similar_text_chunk import get_chunks_tool
 
 
+
 load_dotenv()
 
 

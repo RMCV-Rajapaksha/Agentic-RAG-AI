@@ -8,7 +8,6 @@ import os
 
 
 config = get_config()
-# Global variable to store URLs for the agent to access
 extracted_urls = []
 
 def get_chunks(query_text: str) -> str:
