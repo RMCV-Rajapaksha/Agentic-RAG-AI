@@ -13,7 +13,7 @@ extracted_urls = []
 def get_chunks(query_text: str) -> str:
     """
     Searches a vector database for text chunks similar to the input query.
-    Returns the top 3 most relevant chunks as a formatted string.
+    Returns the top 7 most relevant chunks as a formatted string.
     """
     global extracted_urls
     extracted_urls = []  
@@ -71,5 +71,9 @@ def get_chunks(query_text: str) -> str:
 get_chunks_tool = FunctionTool.from_defaults(
     fn=get_chunks,
     name="get_similar_text_chunks", 
-    description="Use this tool to search and retrieve relevant text chunks from the knowledge base (vector database) based on a user's query.",
+    description=(
+    "Use this tool to search the knowledge base for information to answer a user's query. "
+    "It queries a vector database and returns a single formatted string containing the most relevant text chunks. "
+    "Each chunk explicitly includes its content, source, URL, and title, which you can use to formulate your answer."
+)
 )

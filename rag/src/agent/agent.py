@@ -57,6 +57,15 @@ async def run_agent_async(query: str):
             6. **Output Format Requirements:**
                - Format your answer as well-organized markdown with proper headers, bullet points, and structure
                - Provide a comprehensive answer based on the retrieved information
+
+               **Example of a Perfect Final Answer:**
+                ```json
+                {{
+                    "answer": "Video RAG (Retrieval-Augmented Generation) is a technique that retrieves video content instead of text. This approach is beneficial for queries where visual context is crucial.\\n\\n### Key Applications\\n- **Instructional Content**: Visual guides for tasks like 'how to change a tire'.\\n- **Behavioral Analysis**: Understanding non-verbal cues from video footage.",
+                    "url": [
+                        "[https://www.youtube.com/watch?v=LtcHVLkkxjk](https://www.youtube.com/watch?v=LtcHVLkkxjk)"
+                    ]
+                }}
             """
    
     agent = ReActAgent(
@@ -70,6 +79,8 @@ async def run_agent_async(query: str):
     
     handler = agent.run(query)
     response = await handler
+
+    print(f"\nRaw agent response: {response}\n")
     
     # Get URLs from the global variable set by the tool
     from .tools.get_similar_text_chunk import extracted_urls
