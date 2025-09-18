@@ -8,15 +8,12 @@ import os
 
 
 config = get_config()
-extracted_urls = []
 
 def get_chunks(query_text: str) -> str:
     """
     Searches a vector database for text chunks similar to the input query.
     Returns the top 7 most relevant chunks as a formatted string.
     """
-    global extracted_urls
-    extracted_urls = []  
 
     print(f"Tool 'get_chunks' called with query: '{query_text}'")
     
@@ -32,7 +29,7 @@ def get_chunks(query_text: str) -> str:
         results = db_connection.query_vector_store(
             query_text=query_text,
             embed_model=embed_model,
-            similarity_top_k=7,  
+            similarity_top_k=4,  
         )
 
        
@@ -47,14 +44,10 @@ def get_chunks(query_text: str) -> str:
             url = res.node.metadata.get('url', 'N/A')
             title = res.node.metadata.get('title', 'N/A')
             
-            # Store unique URLs
-            if url != 'N/A' and url.startswith('http') and url not in extracted_urls:
-                extracted_urls.append(url)
-            
             formatted_output += f"--- Chunk {i + 1} ---\n"
-            formatted_output += f"Source: {source}\n"
+         
             formatted_output += f"URL: {url}\n"
-            formatted_output += f"Title: {title}\n"
+      
             formatted_output += f"Content: {content}\n\n"
 
 
