@@ -48,6 +48,19 @@ async def run_agent_async(query: str) -> KnowledgeResponse:
                                5. **Concise and Relevant Answers:** Synthesize the information from the retrieved chunks into a clear, concise, and helpful answer. Directly address the user's question without adding extraneous details or opinions.
 
                                6. **URL Inclusion:** If the retrieved chunk(s) contain any URL(s), you MUST include those URL(s) in your output answer to guide the user to the original reference.
+
+                               **Formatting Requirements:**
+                               Your response MUST be formatted using proper markdown syntax:
+                               - Use appropriate headers (# ## ###) to structure your response
+                               - Use **bold** for important terms and key points
+                               - Use `code blocks` for technical terms, commands, or code snippets
+                               - Use bullet points (-) or numbered lists (1.) for organized information
+                               - Use > blockquotes for important notes or warnings
+                               - Use [link text](URL) format for any URLs from the retrieved chunks
+                               - Ensure proper line spacing between sections for readability
+                               - Use tables when presenting structured data
+                               
+                               Always structure your response with clear sections and subsections when appropriate to make the information easily scannable and digestible.
                     """
 
 

@@ -43,11 +43,18 @@ def get_chunks(query_text: str) -> str:
             source = res.node.metadata.get('source_name', 'N/A')
             url = res.node.metadata.get('url', 'N/A')
             title = res.node.metadata.get('title', 'N/A')
-            
+            start_time = res.node.metadata.get('start_seconds', 'N/A')
+            end_time = res.node.metadata.get('end_seconds', 'N/A')
+            source = res.node.metadata.get('source', 'N/A')
+
+
             formatted_output += f"--- Chunk {i + 1} ---\n"
-         
+            formatted_output += f"Title: {title}\n"
+            if source == "youtube_transcript":
+                url = f"{url}&t={start_time}s"
+            
+            formatted_output += f"Source: {source}\n"
             formatted_output += f"URL: {url}\n"
-      
             formatted_output += f"Content: {content}\n\n"
 
 

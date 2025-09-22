@@ -7,8 +7,6 @@ from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.core.schema import TransformComponent
 
 
-
-
 # Docling imports
 from docling.document_converter import DocumentConverter
 
@@ -147,6 +145,37 @@ class RAGDataIngestion:
                 
         return documents
     
+    def process_youtube_videos(self, urls: List[str]) -> List[Document]:
+        """Process YouTube videos and return Documents with transcript segments"""
+        documents = []
+        
+        print("Processing YouTube videos for transcript segments...")
+        for link in urls:
+            try:
+                video_data = self.youtube_scraper.get_transcript_segments(link)
+               
+                # Create a document for each segment with timestamp metadata
+                for i, segment in enumerate(video_data['segments']):
+                    video_doc = Document(
+                        text=segment['content_markdown'],
+                        metadata={
+                            'url': video_data['url'],
+                            'title': video_data['metadata'].get('title', ''),
+                            'description': video_data['metadata'].get('description', ''),
+                            'source': 'youtube_transcript',
+                            'start_seconds': segment['start_seconds'],
+                            'end_seconds': segment['end_seconds'],
+                        }
+                    )
+                    documents.append(video_doc)
+                    
+                print(f"Processed {len(video_data['segments'])} segments from: {video_data['metadata'].get('title', link)}")
+                
+            except Exception as e:
+                print(f"Error processing YouTube video {link}: {e}")
+                
+        return documents
+    
    
     def ingest_documents(self, documents: List[Document]) -> None:
         """Process and ingest documents into the vector database, skipping chunks with duplicate URLs."""
@@ -194,11 +223,11 @@ def main():
     
 
     urls_to_scrape = [
-        # "https://wso2.ai/",
-        # "https://wso2.com/api-management/ai/",
-        # "https://wso2.com/integration/ai/",
-        # "https://wso2.com/identity-and-access-management/ai/",
-        # "https://wso2.com/internal-developer-platform/ai/"
+        "https://wso2.ai/",
+        "https://wso2.com/api-management/ai/",
+        "https://wso2.com/integration/ai/",
+        "https://wso2.com/identity-and-access-management/ai/",
+        "https://wso2.com/internal-developer-platform/ai/"
     ]
 
 
@@ -206,7 +235,9 @@ def main():
         # "https://www.youtube.com/watch?v=LtcHVLkkxjk",
         # "https://www.youtube.com/watch?v=LtcHVLkkxjk",
         # "https://www.youtube.com/watch?v=LtcHVLkkxjk",
-        "https://www.youtube.com/watch?v=GoYR-iK2UUk"
+        # "https://www.youtube.com/watch?v=GoYR-iK2UUk",
+        # "https://www.youtube.com/watch?v=-nwIoiPB8CE",
+        # "https://www.youtube.com/watch?v=X5eC3Rk9FBQ"
     ]
    
     drive_folder_id = config.google_drive_folder_id
@@ -215,19 +246,8 @@ def main():
         all_documents = []
 
         if urls_to_videos:
-            for link in urls_to_videos:
-                video_data = pipeline.youtube_scraper.get_transcript(link)
-               
-                video_doc = Document(
-                    text=video_data['content_markdown'],
-                    metadata={
-                        'url': video_data['url'],
-                        'title': video_data['metadata'].get('title', ''),
-                        'description': video_data['metadata'].get('description', ''),
-                        'source': 'youtube_transcript'
-                    }
-                )
-                all_documents.append(video_doc)
+            youtube_documents = pipeline.process_youtube_videos(urls_to_videos)
+            all_documents.extend(youtube_documents)
 
         if urls_to_scrape:
             url_documents = pipeline.scrape_web_urls(urls_to_scrape)
