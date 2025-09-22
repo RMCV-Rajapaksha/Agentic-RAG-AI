@@ -149,12 +149,40 @@ class RAGDataIngestion:
     
    
     def ingest_documents(self, documents: List[Document]) -> None:
-        """Process and ingest documents into the vector database"""
+        """Process and ingest documents into the vector database, skipping chunks with duplicate URLs."""
         if not documents:
             return
-            
-       
-        self.pipeline.run(documents=documents, show_progress=True)
+
+        
+        filtered_documents = []
+        try:
+           
+            existing_urls = set()
+            try:
+                
+                all_nodes = self.vector_store._get_all() if hasattr(self.vector_store, '_get_all') else []
+                for node in all_nodes:
+                    url = node.metadata.get('url') if hasattr(node, 'metadata') and node.metadata else None
+                    if url:
+                        existing_urls.add(url)
+            except Exception as e:
+                print(f"Warning: Could not fetch existing URLs from vector store: {e}")
+
+            for doc in documents:
+                url = doc.metadata.get('url') if doc.metadata else None
+                if url and url in existing_urls:
+                    print(f"Skipping document with duplicate URL: {url}")
+                    continue
+                filtered_documents.append(doc)
+        except Exception as e:
+            print(f"Error during duplicate URL filtering: {e}")
+            filtered_documents = documents
+
+        if not filtered_documents:
+            print("No new documents to ingest after duplicate URL filtering.")
+            return
+
+        self.pipeline.run(documents=filtered_documents, show_progress=True)
 
 
 def main():
@@ -166,11 +194,11 @@ def main():
     
 
     urls_to_scrape = [
-        # "https://wso2.ai/",
-        # "https://wso2.com/api-management/ai/",
-        # "https://wso2.com/integration/ai/",
-        # "https://wso2.com/identity-and-access-management/ai/",
-        # "https://wso2.com/internal-developer-platform/ai/"
+        "https://wso2.ai/",
+        "https://wso2.com/api-management/ai/",
+        "https://wso2.com/integration/ai/",
+        "https://wso2.com/identity-and-access-management/ai/",
+        "https://wso2.com/internal-developer-platform/ai/"
     ]
 
 
