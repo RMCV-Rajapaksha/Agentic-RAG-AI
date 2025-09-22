@@ -23,10 +23,7 @@ class Config:
             self._db_user = self._get_required_env('DB_USER')
             self._db_password = self._get_required_env('DB_PASSWORD')
 
-            # Optional variables with defaults
-            self._db_host = os.getenv('DB_HOST', 'localhost')
-            self._db_port = int(os.getenv('DB_PORT', '5432'))  
-
+            
 
             self._db_connection_string = self._get_required_env('CONNECTION_STRING')
             self._db_name = self._get_required_env('DB_NAME')
@@ -75,13 +72,7 @@ class Config:
     def db_password(self) -> str:
         return self._db_password
 
-    @property
-    def db_host(self) -> str:
-        return self._db_host
 
-    @property
-    def db_port(self) -> int:
-        return self._db_port
 
     @property
     def db_connection_string(self) -> str:

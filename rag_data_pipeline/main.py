@@ -194,19 +194,19 @@ def main():
     
 
     urls_to_scrape = [
-        "https://wso2.ai/",
-        "https://wso2.com/api-management/ai/",
-        "https://wso2.com/integration/ai/",
-        "https://wso2.com/identity-and-access-management/ai/",
-        "https://wso2.com/internal-developer-platform/ai/"
+        # "https://wso2.ai/",
+        # "https://wso2.com/api-management/ai/",
+        # "https://wso2.com/integration/ai/",
+        # "https://wso2.com/identity-and-access-management/ai/",
+        # "https://wso2.com/internal-developer-platform/ai/"
     ]
 
 
     urls_to_videos =[
-        "https://www.youtube.com/watch?v=LtcHVLkkxjk",
-        "https://www.youtube.com/watch?v=LtcHVLkkxjk",
-        "https://www.youtube.com/watch?v=LtcHVLkkxjk",
-        "https://www.youtube.com/watch?v=LtcHVLkkxjk"
+        # "https://www.youtube.com/watch?v=LtcHVLkkxjk",
+        # "https://www.youtube.com/watch?v=LtcHVLkkxjk",
+        # "https://www.youtube.com/watch?v=LtcHVLkkxjk",
+        "https://www.youtube.com/watch?v=GoYR-iK2UUk"
     ]
    
     drive_folder_id = config.google_drive_folder_id

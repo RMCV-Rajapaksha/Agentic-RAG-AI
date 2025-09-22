@@ -1,0 +1,168 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* AI Chat Color Palette */
+    --chat-orange: 27 100% 50%;
+    --chat-yellow: 47 100% 52%;
+    --chat-winter-grey: 158 18% 87%;
+    --chat-cool-grey: 210 19% 34%;
+    --chat-dark-grey: 210 21% 20%;
+    --chat-white: 0 0% 100%;
+    
+    /* System Colors */
+    --background: var(--chat-white);
+    --foreground: var(--chat-dark-grey);
+
+    --card: var(--chat-white);
+    --card-foreground: var(--chat-dark-grey);
+
+    --popover: var(--chat-white);
+    --popover-foreground: var(--chat-dark-grey);
+
+    --primary: var(--chat-orange);
+    --primary-foreground: var(--chat-white);
+
+    --secondary: var(--chat-winter-grey);
+    --secondary-foreground: var(--chat-dark-grey);
+
+    --muted: var(--chat-winter-grey);
+    --muted-foreground: var(--chat-cool-grey);
+
+    --accent: var(--chat-yellow);
+    --accent-foreground: var(--chat-dark-grey);
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: var(--chat-white);
+
+    --border: var(--chat-winter-grey);
+    --input: var(--chat-winter-grey);
+    --ring: var(--chat-orange);
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: var(--chat-dark-grey);
+    --foreground: var(--chat-white);
+
+    --card: var(--chat-dark-grey);
+    --card-foreground: var(--chat-white);
+
+    --popover: var(--chat-dark-grey);
+    --popover-foreground: var(--chat-white);
+
+    --primary: var(--chat-orange);
+    --primary-foreground: var(--chat-white);
+
+    --secondary: var(--chat-cool-grey);
+    --secondary-foreground: var(--chat-white);
+
+    --muted: var(--chat-cool-grey);
+    --muted-foreground: var(--chat-winter-grey);
+
+    --accent: var(--chat-yellow);
+    --accent-foreground: var(--chat-dark-grey);
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: var(--chat-white);
+
+    --border: var(--chat-cool-grey);
+    --input: var(--chat-cool-grey);
+    --ring: var(--chat-orange);
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+@layer components {
+  .chat-gradient {
+    background: linear-gradient(135deg, hsl(var(--chat-orange)) 0%, hsl(var(--chat-yellow)) 100%);
+  }
+  
+  .message-user {
+    background: linear-gradient(135deg, hsl(var(--chat-orange)) 0%, hsl(var(--chat-yellow)) 100%);
+    @apply text-white;
+  }
+  
+  .message-ai {
+    @apply bg-secondary text-secondary-foreground;
+  }
+  
+  .chat-input-focus {
+    @apply ring-2 ring-primary ring-offset-2 border-primary;
+  }
+
+  /* Markdown styling for AI messages */
+  .message-ai .prose {
+    @apply text-secondary-foreground;
+  }
+  
+  .message-ai .prose h1,
+  .message-ai .prose h2,
+  .message-ai .prose h3,
+  .message-ai .prose h4,
+  .message-ai .prose h5,
+  .message-ai .prose h6 {
+    @apply text-secondary-foreground font-semibold;
+  }
+  
+  .message-ai .prose strong {
+    @apply text-secondary-foreground font-semibold;
+  }
+  
+  .message-ai .prose ul,
+  .message-ai .prose ol {
+    @apply text-secondary-foreground;
+  }
+  
+  .message-ai .prose li {
+    @apply text-secondary-foreground;
+  }
+  
+  .message-ai .prose code {
+    @apply bg-muted/50 text-secondary-foreground px-1 py-0.5 rounded text-xs;
+  }
+  
+  .message-ai .prose blockquote {
+    @apply border-l-4 border-muted pl-4 italic text-secondary-foreground/80;
+  }
+}

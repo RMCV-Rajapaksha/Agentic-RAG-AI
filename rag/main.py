@@ -1,6 +1,7 @@
 import asyncio
 import json
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from config.config import get_config
 from src.agent.agent import run_agent_async
@@ -13,6 +14,15 @@ os.environ["OPENAI_API_KEY"] = config.openai_api_key
 
 app = FastAPI(title="Agentic RAG API", description="FastAPI server for Agentic RAG system", version="1.0.0")
 
+# Add CORS middleware to allow all origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
+
 
 
 class QueryRequest(BaseModel):
@@ -21,7 +31,6 @@ class QueryRequest(BaseModel):
 
 class QueryResponse(BaseModel):
     answer: str
-    url: list[str]
 
 
 @app.post("/ask", response_model=QueryResponse)
@@ -35,15 +44,13 @@ async def ask_agent(request: QueryRequest):
     """
     response = await run_agent_async(request.query)
 
-    if hasattr(response, 'answer') and hasattr(response, 'url'):
+    if hasattr(response, 'answer'):
         result = {
-            "answer": response.answer,
-            "url": response.url
+            "answer": response.answer
         }
     else:
         result = {
-            "answer": str(response),
-            "url": []
+            "answer": str(response)
         }
 
     return result
