@@ -221,12 +221,10 @@ def main():
 
 
     urls_to_videos =[
-        "https://www.youtube.com/watch?v=LtcHVLkkxjk",
-        "https://www.youtube.com/watch?v=LtcHVLkkxjk",
-        "https://www.youtube.com/watch?v=LtcHVLkkxjk",
-        "https://www.youtube.com/watch?v=GoYR-iK2UUk",
-        "https://www.youtube.com/watch?v=-nwIoiPB8CE",
-        "https://www.youtube.com/watch?v=X5eC3Rk9FBQ"
+        # "https://www.youtube.com/watch?v=LtcHVLkkxjk",
+        # "https://www.youtube.com/watch?v=GoYR-iK2UUk",
+        # "https://www.youtube.com/watch?v=-nwIoiPB8CE",
+        # "https://www.youtube.com/watch?v=X5eC3Rk9FBQ"
     ]
    
     drive_folder_id = "config.google_drive_folder_id"

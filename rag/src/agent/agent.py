@@ -8,6 +8,8 @@ from pydantic import BaseModel ,Field
 from llama_index.llms.openai import OpenAI
 from llama_index.core.agent.workflow import FunctionAgent  
 from llama_index.core.tools import FunctionTool
+from llama_index.core.memory import ChatMemoryBuffer
+
 
 
 from config.config import get_config
@@ -71,9 +73,13 @@ async def run_agent_async(query: str) -> KnowledgeResponse:
         get_chunks_tool 
     ]
 
+    memory = ChatMemoryBuffer.from_defaults(token_limit=3900)
+
+
     agent = FunctionAgent(
         tools=tools,
         llm=llm,
+        memory= memory,
         system_prompt=custom_system_prompt,
         output_cls=KnowledgeResponse  
     )

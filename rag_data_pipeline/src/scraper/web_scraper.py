@@ -69,7 +69,7 @@ class WebScraper:
         # Convert body HTML to Markdown
         h = html2text.HTML2Text()
         h.ignore_images = True
-        h.ignore_links = False
+        h.ignore_links = True
         h.body_width = 0
 
         full_content_html = soup.body if soup.body else soup
