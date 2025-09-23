@@ -25,17 +25,6 @@ import re
 config = get_config()
 os.environ["OPENAI_API_KEY"] = config.openai_api_key
 
-class WhitespaceCleaner(TransformComponent):
-    """
-    A transformation that removes redundant whitespace from the text content of nodes.
-    It collapses multiple spaces, tabs, and newlines into a single space.
-    """
-    def __call__(self, nodes, **kwargs):
-        for node in nodes:
-            # Use regex to replace any sequence of whitespace chars with a single space
-            cleaned_text = re.sub(r'\s+', ' ', node.get_content()).strip()
-            node.set_content(cleaned_text)
-        return nodes
 
 
 class RAGDataIngestion:
@@ -58,7 +47,7 @@ class RAGDataIngestion:
 
         self.pipeline = IngestionPipeline(
             transformations=[
-                WhitespaceCleaner(),
+           
                 MarkdownNodeParser(chunk_size=512, chunk_overlap=100,include_metadata=True,include_prev_next_rel=True),
                 TitleExtractor(),
                 OpenAIEmbedding(),
@@ -223,24 +212,24 @@ def main():
     
 
     urls_to_scrape = [
-        "https://wso2.ai/",
-        "https://wso2.com/api-management/ai/",
-        "https://wso2.com/integration/ai/",
-        "https://wso2.com/identity-and-access-management/ai/",
-        "https://wso2.com/internal-developer-platform/ai/"
+        # "https://wso2.ai/",
+        # "https://wso2.com/api-management/ai/",
+        # "https://wso2.com/integration/ai/",
+        # "https://wso2.com/identity-and-access-management/ai/",
+        # "https://wso2.com/internal-developer-platform/ai/"
     ]
 
 
     urls_to_videos =[
-        # "https://www.youtube.com/watch?v=LtcHVLkkxjk",
-        # "https://www.youtube.com/watch?v=LtcHVLkkxjk",
-        # "https://www.youtube.com/watch?v=LtcHVLkkxjk",
-        # "https://www.youtube.com/watch?v=GoYR-iK2UUk",
-        # "https://www.youtube.com/watch?v=-nwIoiPB8CE",
-        # "https://www.youtube.com/watch?v=X5eC3Rk9FBQ"
+        "https://www.youtube.com/watch?v=LtcHVLkkxjk",
+        "https://www.youtube.com/watch?v=LtcHVLkkxjk",
+        "https://www.youtube.com/watch?v=LtcHVLkkxjk",
+        "https://www.youtube.com/watch?v=GoYR-iK2UUk",
+        "https://www.youtube.com/watch?v=-nwIoiPB8CE",
+        "https://www.youtube.com/watch?v=X5eC3Rk9FBQ"
     ]
    
-    drive_folder_id = config.google_drive_folder_id
+    drive_folder_id = "config.google_drive_folder_id"
     
     try:
         all_documents = []

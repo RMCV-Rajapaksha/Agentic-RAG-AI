@@ -61,6 +61,7 @@ async def run_agent_async(query: str) -> KnowledgeResponse:
                                - Use tables when presenting structured data
                                
                                Always structure your response with clear sections and subsections when appropriate to make the information easily scannable and digestible.
+                               
                     """
 
 

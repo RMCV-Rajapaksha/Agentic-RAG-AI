@@ -13,19 +13,55 @@ os.environ["OPENAI_API_KEY"] = config.openai_api_key
 llm = OpenAI(model="gpt-4o-mini", temperature=0)
 
 instructions_for_llm = """You are a formatter. 
-Your ONLY job is to take the given text and reformat it into Markdown. 
-Do not summarize, change wording, or drop any content. 
-Keep all words exactly as provided, only improve spacing, 
-line breaks, and basic Markdown structure (headings, lists, paragraphs)."""
+                            Your ONLY job is to take the given text and reformat it into Markdown. 
+                            Do not summarize, drop any content, or change the wording of the paragraph text. 
+                            Keep all words exactly as provided for the paragraph/description. 
+                            Generate headings only for key or important points. Only these headings should have timestamps.  
+                            
+                            Rules:
+                            - Generate meaningful headings based on key points in the transcript.  
+                            - Use # for main sections, ## for subsections, ### for sub-subsections.  
+                            - Include timestamps in headings only for very important points.  
+                            - Timestamps should use the format [seconds.s], e.g., [4460.32s], not hh:mm:ss.  
+                            - All other sentences remain as paragraphs under the nearest heading.  
+                            
+                            Example:
+                            
+                            Input:
+                            [3.00s] retrieval augmented generation over
+                            [5.00s] video corpus now we all know rag
+                            [8.00s] retrieval augmented generation we put in a query then it goes and get the retrieval query asking a database
+                            [12.00s] and we get back the retrieved text and then we construct the full prompt and we get the response
+                            
+                            Output:
+                            # [3.00s] Introduction to Retrieval-Augmented Generation
+                            retrieval augmented generation over
+                            video corpus now we all know rag
+                            
+                            ## [8.00s] Query Processing in RAG
+                            retrieval augmented generation we put in a query then it goes and get the retrieval query asking a database
+                            and we get back the retrieved text and then we construct the full prompt and we get the response
+                            """
+
 
 class YouTubeTranscriptScraper:
+
+    """Scraper to fetch and segment YouTube video transcripts into Markdown format.
+    Uses YouTubeTranscriptApi to get transcripts, segments them into time-based chunks,
+    and processes each chunk with an LLM to convert to Markdown.   """
+
     def __init__(self, language="en", segment_length_minutes=10):
         self.language = language
         self.segment_length = segment_length_minutes * 60  
 
         
     def _get_video_id(self, url: str) -> str:
-        """Extract video ID from YouTube URL"""
+        """Extract video ID from YouTube URL
+        Args:
+            url (str): Full YouTube video URL
+        Returns:
+            str: Video ID
+        """
         try:
             if "v=" in url:
                 return url.split("v=")[1].split("&")[0]
@@ -35,9 +71,17 @@ class YouTubeTranscriptScraper:
                 raise ValueError("Invalid YouTube URL format")
         except Exception as e:
             raise ValueError(f"Error extracting video ID: {e}")
+        
+
     
     def _fetch_metadata(self, url: str) -> dict:
-        """Scrape title & description from YouTube page"""
+        """Scrape title & description from YouTube page
+        Args:
+            url (str): YouTube video URL
+        Returns:
+            dict: Metadata with 'title', 'description', 'url'
+        
+        """
         try:
             resp = requests.get(url, timeout=10)
             soup = BeautifulSoup(resp.text, "html.parser")
@@ -56,15 +100,28 @@ class YouTubeTranscriptScraper:
                 "url": url
             }
     
-    def _format_time(self, seconds):
-        """Format timestamp nicely"""
-        h = int(seconds // 3600)
-        m = int((seconds % 3600) // 60)
-        s = int(seconds % 60)
-        return f"{h:02d}:{m:02d}:{s:02d}"
+    def _seconds_to_timestamp(self, seconds: float) -> str:
+        """Convert seconds to HH:MM:SS format
+        Args:
+            seconds (float): Time in seconds
+        Returns:
+            str: Formatted timestamp as HH:MM:SS
+        """
+        hours = int(seconds // 3600)
+        minutes = int((seconds % 3600) // 60)
+        seconds = int(seconds % 60)
+        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+        
+
     
     def _segment_transcript(self, transcript):
-        """Segment transcript into time-based chunks"""
+        """Segment transcript into time-based chunks
+        Args:
+            transcript (list): List of transcript entries from YouTubeTranscriptApi
+        Returns:
+            list of segments, each segment is a list of transcript entries
+        
+        """
       
         snippets = [{"text": s.text, "start": s.start, "duration": s.duration} for s in transcript]
         
@@ -78,7 +135,7 @@ class YouTubeTranscriptScraper:
                 if current_segment:
                     segments.append(current_segment)
                 else:
-                    segments.append([])  # empty segment for skipped time
+                    segments.append([])  
                 current_segment = []
                 current_segment_start += self.segment_length
             
@@ -90,8 +147,17 @@ class YouTubeTranscriptScraper:
         
         return segments
     
+
+    
     def _process_segment_content(self, segment, segment_index):
-        """Process a single segment and convert to markdown"""
+        """Process a single segment and convert to markdown
+        Args:
+            segment (list): List of transcript entries in the segment
+            segment_index (int): Index of the segment for reference
+        Returns:
+            dict with 'start_seconds', 'end_seconds', 'content_markdown'
+        
+        """
         if not segment:
             return {
                 "start_seconds": segment_index * self.segment_length,
@@ -101,18 +167,42 @@ class YouTubeTranscriptScraper:
         
         start_seconds = segment[0]["start"]
         end_seconds = segment[-1]["start"] + segment[-1]["duration"]
-        content = " ".join(s["text"] for s in segment)
+        
+        # Format timestamps
+        start_time = self._seconds_to_timestamp(start_seconds)
+        end_time = self._seconds_to_timestamp(end_seconds)
+        
+        # Create content with individual timestamps for each sentence/phrase
+        timestamped_content = []
+        for s in segment:
+            timestamp_seconds = s["start"]
+            timestamped_content.append(f"[{timestamp_seconds:.2f}s] {s['text']}")
+        
+        content_with_timestamps = "\n".join(timestamped_content)
+
+        print("-----------------------------")
+        print(content_with_timestamps)
+        print("-----------------------------")
         
         # Convert to markdown using LLM
         try:
+            enhanced_instructions = instructions_for_llm + """
+            Keep all timestamps in the format [XXX.XXs] at the beginning of each line.
+            Preserve the timestamp information exactly as provided in seconds format.
+            """
             messages = [
-                ChatMessage(role="user", content=instructions_for_llm), 
-                ChatMessage(role="user", content=content)
+                ChatMessage(role="user", content=enhanced_instructions), 
+                ChatMessage(role="user", content=content_with_timestamps)
             ]
             response = llm.chat(messages)
-            markdown_content = response.message.content
+
+            print("-----------------------------")
+            print("LLM response:", response.message.content)
+            print("-----------------------------")
+
+            markdown_content = f"**Time Range: {start_time} - {end_time}**\n\n{response.message.content}"
         except Exception as e:
-            markdown_content = f"Error processing content: {e}\n\nOriginal content:\n{content}"
+            markdown_content = f"**Time Range: {start_time} - {end_time}**\n\nError processing content: {e}\n\nOriginal content:\n{content_with_timestamps}"
         
         return {
             "start_seconds": start_seconds,
@@ -120,6 +210,8 @@ class YouTubeTranscriptScraper:
             "content_markdown": markdown_content
         }
     
+
+
     def get_transcript_segments(self, url: str) -> dict:
         """
         Get segmented transcript + metadata from a YouTube video.
@@ -178,30 +270,38 @@ class YouTubeTranscriptScraper:
     
     # Keep the original method for backward compatibility
     def get_transcript(self, url: str) -> dict:
-        """Original method - returns full transcript as single markdown"""
+        """Original method - returns full transcript as single markdown with timestamps"""
         result = self.get_transcript_segments(url)
         
-        # Combine all segments into one markdown
+        # Combine all segments into one markdown with timestamps
         combined_markdown = ""
         for i, segment in enumerate(result["segments"], 1):
-            combined_markdown += f"\n\n## Segment {i}\n\n"
+            start_time = self._seconds_to_timestamp(segment["start_seconds"])
+            end_time = self._seconds_to_timestamp(segment["end_seconds"])
+            combined_markdown += f"\n\n## Segment {i} ({start_time} - {end_time})\n\n"
             combined_markdown += segment["content_markdown"]
+
         
+         
         return {
             "url": result["url"],
             "metadata": result["metadata"],
             "content_markdown": combined_markdown.strip()
         }
 
+
+
 # Example usage
 if __name__ == "__main__":
-    yt_url = "https://www.youtube.com/watch?v=-nwIoiPB8CE"
+    yt_url = "https://www.youtube.com/watch?v=LtcHVLkkxjk"
     
     # Create scraper with 10-minute segments (default)
     scraper = YouTubeTranscriptScraper(segment_length_minutes=10)
     
     # Get segmented transcript
     result = scraper.get_transcript_segments(yt_url)
+
+    print("Video URL:", result)
     
     print("Metadata:", result["metadata"])
     
