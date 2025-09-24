@@ -85,8 +85,36 @@ async def run_agent_async(query: str) -> KnowledgeResponse:
     )
 
     print(f"\nAsking the agent: {query}\n")
+
+    max_retries = 3
     
-    response = await agent.run(user_msg=query) 
+    for attempt in range(max_retries):
+        try:
+            response = await asyncio.wait_for(
+                agent.run(user_msg=query), 
+                timeout=300
+            )
+            print(f"\nRaw agent response: {response}\n")
+            break
+            
+        except (ConnectionError, TimeoutError) as e:
+            if attempt < max_retries - 1:
+                wait_time = 2 ** attempt  # Exponential backoff
+                
+                await asyncio.sleep(wait_time)
+                continue
+            else:
+               
+                return KnowledgeResponse(
+                    answer="I'm having trouble processing your request after multiple attempts. Please try again later."
+                )
+        except Exception as e:
+            # Don't retry for non-transient errors
+            
+            return KnowledgeResponse(
+                answer="I encountered an error while processing your request. Please try again or contact support."
+            )
+    
     print(f"\nRaw agent response: {response}\n")
 
   

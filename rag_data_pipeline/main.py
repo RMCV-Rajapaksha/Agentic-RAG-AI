@@ -212,19 +212,28 @@ def main():
     
 
     urls_to_scrape = [
-        # "https://wso2.ai/",
-        # "https://wso2.com/api-management/ai/",
-        # "https://wso2.com/integration/ai/",
-        # "https://wso2.com/identity-and-access-management/ai/",
-        # "https://wso2.com/internal-developer-platform/ai/"
+        "https://wso2.ai/",
+        "https://wso2.com/api-management/ai/",
+        "https://wso2.com/integration/ai/",
+        "https://wso2.com/identity-and-access-management/ai/",
+        "https://wso2.com/internal-developer-platform/ai/"
     ]
 
 
     urls_to_videos =[
-        # "https://www.youtube.com/watch?v=LtcHVLkkxjk",
-        # "https://www.youtube.com/watch?v=GoYR-iK2UUk",
-        # "https://www.youtube.com/watch?v=-nwIoiPB8CE",
-        # "https://www.youtube.com/watch?v=X5eC3Rk9FBQ"
+        "https://www.youtube.com/watch?v=LtcHVLkkxjk",
+        "https://www.youtube.com/watch?v=GoYR-iK2UUk",
+        "https://www.youtube.com/watch?v=-nwIoiPB8CE",
+        "https://www.youtube.com/watch?v=X5eC3Rk9FBQ",
+        "https://www.youtube.com/watch?v=wobNffok7nc",
+        "https://www.youtube.com/watch?v=EW9BR4Gkh6Y",
+        "https://www.youtube.com/watch?v=Va9s2Gkxx9Y",
+        "https://www.youtube.com/watch?v=D9omNKy1n0M",
+        "https://www.youtube.com/watch?v=LVZHCSNrF10",
+        "https://www.youtube.com/watch?v=3GaOnj_Gsco",
+        "https://www.youtube.com/watch?v=f4wEL3yOO-g",
+        "https://www.youtube.com/watch?v=bzSgEjpcijY",
+        ""
     ]
    
     drive_folder_id = "config.google_drive_folder_id"
