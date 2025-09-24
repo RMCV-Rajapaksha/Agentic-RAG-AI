@@ -15,7 +15,8 @@ class Config:
     def __init__(self):
         if not self._initialized:
             
-            load_dotenv()
+            if os.path.isfile('.env'):
+                load_dotenv()
 
             
             self._openai_api_key = self._get_required_env('OPENAI_API_KEY')
