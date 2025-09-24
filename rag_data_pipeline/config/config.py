@@ -20,8 +20,7 @@ class Config:
             # Required variables
             self._openai_api_key = self._get_required_env('OPENAI_API_KEY')
             self._db_name = self._get_required_env('DB_NAME')
-            self._db_user = self._get_required_env('DB_USER')
-            self._db_password = self._get_required_env('DB_PASSWORD')
+           
 
             
 
@@ -64,14 +63,9 @@ class Config:
     def db_name(self) -> str:
         return self._db_name
 
-    @property
-    def db_user(self) -> str:
-        return self._db_user
+ 
 
-    @property
-    def db_password(self) -> str:
-        return self._db_password
-
+ 
 
 
     @property
