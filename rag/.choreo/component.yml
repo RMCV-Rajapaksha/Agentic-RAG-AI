@@ -1,0 +1,15 @@
+schemaVersion: 1.2
+
+endpoints:
+  - name: orchestration-service-approach2
+    displayName: Orchestration service
+
+    service:
+      basePath: /
+      port: 8000
+
+    type: REST
+
+    networkVisibilities: 
+      - Public
+    schemaFilePath: open-api-v1-spec.yaml
