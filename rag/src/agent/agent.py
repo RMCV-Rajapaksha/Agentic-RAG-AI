@@ -91,7 +91,7 @@ async def run_agent_async(query: str) -> KnowledgeResponse:
         output_cls=KnowledgeResponse  
     )
 
-    print(f"\nAsking the agent: {query}\n")
+    
 
     max_retries = 3
     
@@ -101,7 +101,7 @@ async def run_agent_async(query: str) -> KnowledgeResponse:
                 agent.run(user_msg=query), 
                 timeout=300
             )
-            print(f"\nRaw agent response: {response}\n")
+            
             break
             
         except (ConnectionError, TimeoutError) as e:
@@ -122,7 +122,7 @@ async def run_agent_async(query: str) -> KnowledgeResponse:
                 answer="I encountered an error while processing your request. Please try again or contact support."
             )
     
-    print(f"\nRaw agent response: {response}\n")
+    
 
   
     if hasattr(response, "structured_response") and isinstance(response.structured_response, KnowledgeResponse):

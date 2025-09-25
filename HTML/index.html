@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WSO2 AI Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        
+        .typing-dot {
+            animation: typing 1.4s infinite;
+        }
+        
+        .typing-dot:nth-child(1) { animation-delay: 0s; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        
+        .gradient-border {
+            background: linear-gradient(45deg, #002c53, #073763, #002c53);
+            padding: 2px;
+            border-radius: 12px;
+        }
+        
+        .gradient-border-inner {
+            background: white;
+            border-radius: 10px;
+        }
+        
+        .chat-container {
+            height: calc(100vh - 140px);
+        }
+        
+        .markdown-content h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin: 1rem 0 0.5rem 0;
+            color: #002c53;
+        }
+        
+        .markdown-content ul {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+        }
+        
+        .markdown-content li {
+            margin: 0.25rem 0;
+        }
+        
+        .markdown-content strong {
+            font-weight: 600;
+            color: #002c53;
+        }
+        
+        .markdown-content a {
+            color: #073763;
+            text-decoration: underline;
+        }
+        
+        .markdown-content a:hover {
+            color: #002c53;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
+    <div class="container mx-auto px-4 py-6 max-w-4xl">
+        <!-- Chat Header -->
+        <div class="text-center mb-6 fade-in">
+            <h1 class="text-3xl font-bold bg-gradient-to-r from-[#002c53] to-[#073763] bg-clip-text text-transparent mb-2">
+                WSO2 AI Assistant
+            </h1>
+            <p class="text-gray-600">Ask me anything about WSO2's AI-based products, solutions and video sessions</p>
+        </div>
+        
+        <!-- Chat Container -->
+        <div class="bg-white rounded-xl shadow-xl chat-container flex flex-col">
+            <!-- Messages Area -->
+            <div id="messagesContainer" class="flex-1 p-6 overflow-y-auto space-y-4">
+                <div class="text-center py-8">
+                    <div class="inline-block p-4 bg-blue-50 rounded-full mb-4">
+                        <svg class="w-8 h-8 text-[#002c53]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                        </svg>
+                    </div>
+                    <p class="text-gray-500">Start a conversation by asking about WSO2's AI products!</p>
+                </div>
+            </div>
+            
+            <!-- Input Area -->
+            <div class="border-t border-gray-200 p-4">
+                <div class="gradient-border">
+                    <div class="gradient-border-inner p-1">
+                        <div class="flex gap-3">
+                            <input 
+                                type="text" 
+                                id="messageInput" 
+                                placeholder="Ask about WSO2 AI products..." 
+                                class="flex-1 p-3 border-none outline-none text-gray-700 placeholder-gray-400"
+                                onkeypress="handleKeyPress(event)"
+                            />
+                            <button 
+                                id="sendButton" 
+                                onclick="sendMessage()" 
+                                class="px-6 py-3 bg-gradient-to-r from-[#002c53] to-[#073763] text-white rounded-lg hover:from-[#073763] hover:to-[#002c53] transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#002c53] focus:ring-offset-2"
+                            >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isLoading = false;
+        
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !isLoading) {
+                sendMessage();
+            }
+        }
+        
+        function addMessage(content, isUser = false) {
+            const messagesContainer = document.getElementById('messagesContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `fade-in ${isUser ? 'flex justify-end' : 'flex justify-start'}`;
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = `max-w-3xl p-4 rounded-lg ${
+                isUser 
+                    ? 'bg-gradient-to-r from-[#002c53] to-[#073763] text-white ml-12' 
+                    : 'bg-gray-100 text-gray-800 mr-12'
+            }`;
+            
+            if (isUser) {
+                messageContent.textContent = content;
+            } else {
+                messageContent.innerHTML = `<div class="markdown-content">${marked.parse(content)}</div>`;
+            }
+            
+            messageDiv.appendChild(messageContent);
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            return messageDiv;
+        }
+        
+        function addLoadingMessage() {
+            const messagesContainer = document.getElementById('messagesContainer');
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'flex justify-start fade-in';
+            loadingDiv.id = 'loadingMessage';
+            
+            loadingDiv.innerHTML = `
+                <div class="max-w-3xl p-4 rounded-lg bg-gray-100 text-gray-800 mr-12">
+                    <div class="flex items-center space-x-2">
+                        <div class="flex space-x-1">
+                            <div class="typing-dot w-2 h-2 bg-[#002c53] rounded-full"></div>
+                            <div class="typing-dot w-2 h-2 bg-[#002c53] rounded-full"></div>
+                            <div class="typing-dot w-2 h-2 bg-[#002c53] rounded-full"></div>
+                        </div>
+                        <span class="text-gray-600">WSO2 AI is thinking...</span>
+                    </div>
+                    <div class="mt-2 text-sm text-gray-500">
+                        Response time may vary
+                    </div>
+                </div>
+            `;
+            
+            messagesContainer.appendChild(loadingDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        function removeLoadingMessage() {
+            const loadingMessage = document.getElementById('loadingMessage');
+            if (loadingMessage) {
+                loadingMessage.remove();
+            }
+        }
+        
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const sendButton = document.getElementById('sendButton');
+            const query = input.value.trim();
+            
+            if (!query || isLoading) return;
+            
+            // Set loading state
+            isLoading = true;
+            input.disabled = true;
+            sendButton.disabled = true;
+            sendButton.innerHTML = `
+                <div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            `;
+            
+            // Add user message
+            addMessage(query, true);
+            input.value = '';
+            
+            // Add loading message
+            addLoadingMessage();
+            
+            try {
+                const response = await fetch('https://f2c7f522-ef47-48ce-a429-3fc2f15d2011-dev.e1-us-east-azure.choreoapis.dev/chamara/ai-web/v1.0/ask', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query: query })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Remove loading message and add response
+                removeLoadingMessage();
+                addMessage(data.answer);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                removeLoadingMessage();
+                addMessage('Sorry, I encountered an error while processing your request. Please try again later.');
+            } finally {
+                // Reset loading state
+                isLoading = false;
+                input.disabled = false;
+                sendButton.disabled = false;
+                sendButton.innerHTML = `
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                    </svg>
+                `;
+                input.focus();
+            }
+        }
+        
+        // Clear the welcome message when first message is sent
+        let isFirstMessage = true;
+        const originalAddMessage = addMessage;
+        addMessage = function(content, isUser = false) {
+            if (isFirstMessage && isUser) {
+                document.getElementById('messagesContainer').innerHTML = '';
+                isFirstMessage = false;
+            }
+            return originalAddMessage(content, isUser);
+        };
+        
+        // Focus input on load
+        window.addEventListener('load', () => {
+            document.getElementById('messageInput').focus();
+        });
+    </script>
+</body>
+</html>

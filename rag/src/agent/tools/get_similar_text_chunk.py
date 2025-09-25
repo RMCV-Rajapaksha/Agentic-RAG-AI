@@ -58,7 +58,7 @@ def get_chunks(query_text: str) -> str:
             formatted_output += f"URL: {url}\n"
             formatted_output += f"Content: {content}\n\n"
 
-        print(formatted_output)
+        
         return formatted_output.strip()
 
     except Exception as e:
