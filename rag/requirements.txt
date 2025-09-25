@@ -55,7 +55,6 @@ numpy==2.3.3
 openai==1.107.1
 packaging==25.0
 pandas==2.2.3
-pgvector==0.4.1
 pillow==11.3.0
 platformdirs==4.4.0
 propcache==0.3.2
