@@ -31,7 +31,7 @@ def get_chunks(query_text: str) -> str:
         results = db_connection.query_vector_store(
             query_text=query_text,
             embed_model=embed_model,
-            similarity_top_k=5,
+            similarity_top_k=10,
         )
 
         if not results:
