@@ -23,6 +23,13 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
+@app.on_event("startup")
+async def startup_event():
+    print("🚀 Agentic RAG API is starting up...")
+    print("📡 Server is running on http://127.0.0.1:8000")
+    print("📚 API Documentation available at http://127.0.0.1:8000/docs")
+    print("✅ Application started successfully!")
+
 
 
 class QueryRequest(BaseModel):
@@ -64,3 +71,8 @@ def health_check():
 # uvicorn main:app --reload
 
 #  curl -X POST "http://127.0.0.1:8000/ask"      -H "Content-Type: application/json"      -d '{"query": "What are the AI-based products in WSO2?"}'
+
+if __name__ == "__main__":
+    import uvicorn
+    print("🔥 Starting Agentic RAG API Server...")
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
