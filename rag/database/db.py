@@ -1,71 +1,44 @@
-import psycopg2
+import logging
+from typing import List
+
 from sqlalchemy import make_url
 from llama_index.vector_stores.postgres import PGVectorStore
 from llama_index.core.vector_stores import VectorStoreQuery
 from llama_index.core.embeddings import BaseEmbedding
 from llama_index.core.schema import NodeWithScore
-from typing import List
+
 from config.config import get_config
-import logging
 
 
 logger = logging.getLogger(__name__)
 
+
 class DatabaseConnection:
     """
     Handles database connections and vector store initialization for data ingestion.
+    Assumes the external PostgreSQL + pgvector database already exists.
     """
-    
+
     def __init__(self):
         self.config = get_config()
         self.connection_string = self.config.db_connection_string
-        self.db_name = self.config.db_name
         self.table_name = self.config.db_table_name
         self.vector_store = None
-        
-    def create_database_if_not_exists(self):
-        """
-        Creates the database if it doesn't exist.
-        """
-        try:
-            # Connect to postgres server (not specific database)
-            conn = psycopg2.connect(self.connection_string)
-            conn.autocommit = True
-            
-            with conn.cursor() as cursor:
-                # Check if database exists
-                cursor.execute(
-                    "SELECT 1 FROM pg_catalog.pg_database WHERE datname = %s", 
-                    (self.db_name,)
-                )
-                exists = cursor.fetchone()
-                
-                if not exists:
-                    cursor.execute(f"CREATE DATABASE {self.db_name}")
-                    logger.info(f"Created database: {self.db_name}")
-                else:
-                    logger.info(f"Database {self.db_name} already exists")
-                    
-            conn.close()
-            
-        except Exception as e:
-            logger.error(f"Error creating database: {e}")
-            raise
-            
-    def get_vector_store(self, embed_dim: int = 1536):
+
+    def get_vector_store(self, embed_dim: int = 1536) -> PGVectorStore:
         """
         Returns a configured PGVectorStore instance.
-        
+
         Args:
             embed_dim (int): Embedding dimension (default: 1536 for OpenAI)
-            
+
         Returns:
             PGVectorStore: Configured vector store instance
         """
         url = make_url(self.connection_string)
-        
+
         vector_store = PGVectorStore.from_params(
-            database=self.db_name,
+            database=url.database,   # use DB directly from connection string
             host=url.host,
             password=url.password,
             port=url.port,
@@ -79,10 +52,8 @@ class DatabaseConnection:
                 "hnsw_dist_method": "vector_cosine_ops",
             },
         )
-        
-        return vector_store
-    
 
+        return vector_store
 
     def query_vector_store(
         self,
@@ -99,8 +70,7 @@ class DatabaseConnection:
             similarity_top_k (int): The number of top similar results to retrieve.
 
         Returns:
-            List[NodeWithScore]: A list of nodes, each containing the text chunk,
-                                 metadata, and similarity score.
+            List[NodeWithScore]: A list of nodes with similarity scores.
         """
         if not query_text:
             logger.warning("Query text is empty. Returning an empty list.")
@@ -126,10 +96,9 @@ class DatabaseConnection:
             nodes_with_scores = []
             if result.nodes and result.similarities:
                 for node, similarity in zip(result.nodes, result.similarities):
-                 
                     if hasattr(node, 'metadata') and node.metadata:
                         logger.debug(f"Node metadata: {node.metadata}")
-                    
+
                     nodes_with_scores.append(NodeWithScore(node=node, score=similarity))
 
             logger.info(f"Found {len(nodes_with_scores)} related text chunks with metadata.")
@@ -137,5 +106,4 @@ class DatabaseConnection:
 
         except Exception as e:
             logger.error(f"An error occurred during vector store query: {e}")
-          
             raise
