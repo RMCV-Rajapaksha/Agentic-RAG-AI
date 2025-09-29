@@ -18,6 +18,7 @@ class DatabaseConnection:
         self.db_name = self.config.db_name
         self.table_name = self.config.db_table_name
         
+        
     # def create_database_if_not_exists(self):
     #     """
     #     Creates the database if it doesn't exist.
