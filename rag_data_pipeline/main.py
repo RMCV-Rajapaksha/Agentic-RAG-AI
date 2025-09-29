@@ -41,7 +41,7 @@ class RAGDataIngestion:
         self.youtube_scraper = YouTubeTranscriptScraper()
 
         
-        # self.db_connection.create_database_if_not_exists()
+       
         self.vector_store = self.db_connection.get_vector_store()
         
 
