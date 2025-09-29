@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 class DatabaseConnection:
     """
     Handles database connections and vector store initialization for data ingestion.
+
     """
     
     def __init__(self):
@@ -49,7 +50,7 @@ class DatabaseConnection:
     def get_vector_store(self, embed_dim: int = 1536):
         """
         Returns a configured PGVectorStore instance.
-        
+
         Args:
             embed_dim (int): Embedding dimension (default: 1536 for OpenAI)
             

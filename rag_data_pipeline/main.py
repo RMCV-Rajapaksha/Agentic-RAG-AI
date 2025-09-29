@@ -50,7 +50,7 @@ class RAGDataIngestion:
            
                 MarkdownNodeParser(chunk_size=512, chunk_overlap=100,include_metadata=True,include_prev_next_rel=True),
                 TitleExtractor(),
-                OpenAIEmbedding(),
+                OpenAIEmbedding(model="text-embedding-3-small", embed_dim=1536),
             ],
             vector_store=self.vector_store,
         )
@@ -221,18 +221,18 @@ def main():
 
 
     urls_to_videos =[
-        "https://www.youtube.com/watch?v=LtcHVLkkxjk",
-        "https://www.youtube.com/watch?v=GoYR-iK2UUk",
-        "https://www.youtube.com/watch?v=-nwIoiPB8CE",
-        "https://www.youtube.com/watch?v=X5eC3Rk9FBQ",
-        "https://www.youtube.com/watch?v=wobNffok7nc",
-        "https://www.youtube.com/watch?v=EW9BR4Gkh6Y",
-        "https://www.youtube.com/watch?v=Va9s2Gkxx9Y",
-        "https://www.youtube.com/watch?v=D9omNKy1n0M",
-        "https://www.youtube.com/watch?v=LVZHCSNrF10",
-        "https://www.youtube.com/watch?v=3GaOnj_Gsco",
-        "https://www.youtube.com/watch?v=f4wEL3yOO-g",
-        "https://www.youtube.com/watch?v=bzSgEjpcijY",
+        # "https://www.youtube.com/watch?v=LtcHVLkkxjk",
+        # "https://www.youtube.com/watch?v=GoYR-iK2UUk",
+        # "https://www.youtube.com/watch?v=-nwIoiPB8CE",
+        # "https://www.youtube.com/watch?v=X5eC3Rk9FBQ",
+        # "https://www.youtube.com/watch?v=wobNffok7nc",
+        # "https://www.youtube.com/watch?v=EW9BR4Gkh6Y",
+        # "https://www.youtube.com/watch?v=Va9s2Gkxx9Y",
+        # "https://www.youtube.com/watch?v=D9omNKy1n0M",
+        # "https://www.youtube.com/watch?v=LVZHCSNrF10",
+        # "https://www.youtube.com/watch?v=3GaOnj_Gsco",
+        # "https://www.youtube.com/watch?v=f4wEL3yOO-g",
+        # "https://www.youtube.com/watch?v=bzSgEjpcijY",
         ""
     ]
    

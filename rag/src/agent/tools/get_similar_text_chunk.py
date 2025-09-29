@@ -25,7 +25,7 @@ def get_chunks(query_text: str) -> str:
     try:
         # Initialize database connection and embedding model
         db_connection = DatabaseConnection()
-        embed_model = OpenAIEmbedding()
+        embed_model =  OpenAIEmbedding(model="text-embedding-3-small", embed_dim=1536)
 
         # Query vector database
         results = db_connection.query_vector_store(
