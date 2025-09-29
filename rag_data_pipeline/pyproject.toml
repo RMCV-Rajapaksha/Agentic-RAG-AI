@@ -17,7 +17,6 @@ dependencies = [
     "llama-index-vector-stores-postgres>=0.6.6",
     "llama-index-readers-google>=0.2.0",
     "numpy>=2.3.2",
-    "psycopg2-binary>=2.9.10",
     "sqlalchemy>=2.0.43",
     "timescale-vector>=0.0.7",
     "beautifulsoup4>=4.12.0",
