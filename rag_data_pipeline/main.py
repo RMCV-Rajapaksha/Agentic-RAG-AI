@@ -24,9 +24,7 @@ from docx import Document as DocxDocument
 from markdownify import markdownify as md
 
 
-# ===============================
-# Lightweight Converter (replaces Docling)
-# ===============================
+
 class LightweightConverter:
     def convert(self, source: str) -> str:
         """Convert document to Markdown using lightweight libraries."""
@@ -56,11 +54,11 @@ class LightweightConverter:
                 return md(html_content)
 
             else:
-                print(f"⚠️ Unsupported format for {source}")
+                print(f"Unsupported format for {source}")
                 return ""
 
         except Exception as e:
-            print(f"❌ Error converting {source}: {e}")
+            print(f"Error converting {source}: {e}")
             return ""
 
 
@@ -79,7 +77,7 @@ class RAGDataIngestion:
         self.drive_loader = GoogleDriveLoader()
         self.youtube_scraper = YouTubeTranscriptScraper()
 
-        # ✅ Replaced Docling with LightweightConverter
+        self.document_converter = LightweightConverter
         self.document_converter = LightweightConverter()
 
         self.vector_store = self.db_connection.get_vector_store()
@@ -170,7 +168,7 @@ class RAGDataIngestion:
                     documents.append(video_doc)
                 print(f"Processed {len(video_data['segments'])} segments from {link}")
             except Exception as e:
-                print(f"❌ Error processing YouTube video {link}: {e}")
+                print(f"Error processing YouTube video {link}: {e}")
         return documents
 
     def ingest_documents(self, documents: List[Document]) -> None:
@@ -187,7 +185,7 @@ class RAGDataIngestion:
                     if url:
                         existing_urls.add(url)
             except Exception as e:
-                print(f"⚠️ Could not fetch existing URLs from vector store: {e}")
+                print(f"Could not fetch existing URLs from vector store: {e}")
 
             for doc in documents:
                 url = doc.metadata.get('url') if doc.metadata else None
@@ -196,7 +194,7 @@ class RAGDataIngestion:
                     continue
                 filtered_documents.append(doc)
         except Exception as e:
-            print(f"⚠️ Error during duplicate filtering: {e}")
+            print(f"Error during duplicate filtering: {e}")
             filtered_documents = documents
 
         if not filtered_documents:
@@ -221,7 +219,14 @@ def main():
     ]
 
     urls_to_videos = [
-        # "https://www.youtube.com/watch?v=example"
+     "https://www.youtube.com/watch?v=X5eC3Rk9FBQ",
+     "https://www.youtube.com/watch?v=-nwIoiPB8CE",
+     "https://www.youtube.com/watch?v=GoYR-iK2UUk",
+     "https://www.youtube.com/watch?v=CYii_zExySA",
+     "https://www.youtube.com/watch?v=banNxyyTSI4",
+     "https://www.youtube.com/watch?v=wobNffok7nc",
+     "https://www.youtube.com/watch?v=bTj0h5x8W70"
+
     ]
 
     config = get_config()
