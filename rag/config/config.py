@@ -21,7 +21,8 @@ class Config:
             
             self._openai_api_key = self._get_required_env('OPENAI_API_KEY')
             self._db_name = self._get_required_env('DB_NAME')
-           
+
+            self.google_client_id = self._get_required_env('GOOGLE_CLIENT_ID')           
             
             
             self._db_connection_string = self._get_required_env('CONNECTION_STRING')
@@ -48,9 +49,9 @@ class Config:
     def db_name(self) -> str:
         return self._db_name
 
-    
-
-    
+    @property
+    def google_client_id(self) -> str:
+        return self.google_client_id
 
     
 

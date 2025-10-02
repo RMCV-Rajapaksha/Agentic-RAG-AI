@@ -28,7 +28,7 @@ app.add_middleware(
 )
 
 # Google Client ID - get this from Google Cloud Console
-GOOGLE_CLIENT_ID = "25036282439-u9ilcglhdef13u5a1b7g54krufmjuetm.apps.googleusercontent.com"
+GOOGLE_CLIENT_ID = config.google_client_id
 
 async def verify_google_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Verify Google ID token"""
