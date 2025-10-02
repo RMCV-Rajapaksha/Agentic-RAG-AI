@@ -20,6 +20,7 @@ class Config:
             # Required variables
             self._openai_api_key = self._get_required_env('OPENAI_API_KEY')
             self._db_name = self._get_required_env('DB_NAME')
+            self._google_drive_folder_id = self._get_required_env('FOLDER_ID')
            
 
             
@@ -63,9 +64,9 @@ class Config:
     def db_name(self) -> str:
         return self._db_name
 
- 
-
- 
+    @property
+    def google_drive_folder_id(self) -> str:
+        return self._google_drive_folder_id
 
 
     @property
