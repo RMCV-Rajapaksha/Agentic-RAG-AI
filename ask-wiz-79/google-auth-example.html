@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WSO2 AI Assistant - Google Authentication Demo</title>
+    <meta name="google-signin-client_id" content="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .chat-container {
+            max-width: 800px;
+            margin: 20px auto;
+            border: none;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            background: white;
+        }
+        .chat-header {
+            background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logo {
+            width: 32px;
+            height: 32px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        .user-details {
+            text-align: right;
+        }
+        .user-name {
+            font-size: 14px;
+            font-weight: 600;
+            margin: 0;
+        }
+        .user-email {
+            font-size: 12px;
+            opacity: 0.8;
+            margin: 0;
+        }
+        .sign-out-btn {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        .sign-out-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .chat-messages {
+            height: 500px;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        .message {
+            margin: 16px 0;
+            display: flex;
+            gap: 12px;
+        }
+        .message.user {
+            flex-direction: row-reverse;
+        }
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #4285f4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            line-height: 1.4;
+        }
+        .user .message-content {
+            background: #4285f4;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        .bot .message-content {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 4px;
+        }
+        .message-time {
+            font-size: 11px;
+            opacity: 0.6;
+            margin-top: 4px;
+        }
+        .chat-input {
+            display: flex;
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            gap: 12px;
+        }
+        .chat-input input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            outline: none;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        .chat-input input:focus {
+            border-color: #4285f4;
+        }
+        .chat-input button {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        .chat-input button:hover {
+            transform: translateY(-1px);
+        }
+        .chat-input button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .login-container {
+            text-align: center;
+            padding: 60px 40px;
+            max-width: 400px;
+            margin: 100px auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        .login-logo {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            font-size: 24px;
+            color: white;
+        }
+        .login-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0 0 8px;
+            color: #333;
+        }
+        .login-subtitle {
+            color: #666;
+            margin: 0 0 32px;
+            line-height: 1.5;
+        }
+        .security-notice {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 24px 0;
+            text-align: left;
+        }
+        .security-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: #1976d2;
+            margin: 0 0 8px;
+            font-size: 14px;
+        }
+        .security-text {
+            color: #1565c0;
+            font-size: 12px;
+            margin: 0;
+        }
+        .google-btn-container {
+            margin: 24px 0;
+        }
+        .features-list {
+            text-align: left;
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #e0e0e0;
+        }
+        .features-title {
+            font-weight: 600;
+            color: #333;
+            margin: 0 0 16px;
+            font-size: 14px;
+        }
+        .features-list ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .features-list li {
+            color: #666;
+            font-size: 13px;
+            margin: 8px 0;
+            padding-left: 16px;
+            position: relative;
+        }
+        .features-list li:before {
+            content: "•";
+            color: #4285f4;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+        .loading {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #666;
+        }
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #e0e0e0;
+            border-top: 2px solid #4285f4;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .hidden { 
+            display: none; 
+        }
+        /* Scrollbar styling */
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
+</head>
+<body>
+    <div id="loginContainer" class="login-container">
+        <div class="login-logo">🤖</div>
+        <h1 class="login-title">WSO2 AI Assistant</h1>
+        <p class="login-subtitle">Please sign in with Google to access the AI assistant</p>
+        
+        <div class="security-notice">
+            <div class="security-title">
+                🛡️ Secure Authentication
+            </div>
+            <p class="security-text">
+                Your data is protected. We only access basic profile information.
+            </p>
+        </div>
+
+        <div id="g_id_onload"
+             data-client_id="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+             data-callback="handleCredentialResponse">
+        </div>
+        <div class="google-btn-container">
+            <div class="g_id_signin" 
+                 data-type="standard" 
+                 data-size="large" 
+                 data-text="signin_with" 
+                 data-shape="pill" 
+                 data-theme="outline"
+                 data-width="300"></div>
+        </div>
+
+        <div class="features-list">
+            <p class="features-title">What you can do:</p>
+            <ul>
+                <li>Ask questions about WSO2 products</li>
+                <li>Get instant documentation help</li>
+                <li>Access intelligent knowledge base</li>
+                <li>Receive personalized assistance</li>
+            </ul>
+        </div>
+    </div>
+
+    <div id="chatContainer" class="chat-container hidden">
+        <div class="chat-header">
+            <div class="header-left">
+                <div class="logo">🤖</div>
+                <div>
+                    <h3 style="margin: 0; font-size: 18px; font-weight: 600;">WSO2 AI Assistant</h3>
+                    <p style="margin: 0; font-size: 12px; opacity: 0.8;">Your intelligent guide to WSO2 knowledge</p>
+                </div>
+            </div>
+            <div class="user-info">
+                <img id="userAvatar" class="user-avatar" src="" alt="User Avatar">
+                <div class="user-details">
+                    <p id="userName" class="user-name"></p>
+                    <p id="userEmail" class="user-email"></p>
+                </div>
+                <button class="sign-out-btn" onclick="signOut()">Sign Out</button>
+            </div>
+        </div>
+
+        <div id="chatMessages" class="chat-messages">
+            <div class="message bot">
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">
+                    Hello! I'm your WSO2 AI assistant. How can I help you today?
+                    <div class="message-time" id="initialTime"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-input">
+            <input type="text" id="messageInput" placeholder="Type your message..." 
+                   onkeypress="if(event.key==='Enter') sendMessage()">
+            <button onclick="sendMessage()" id="sendButton">Send</button>
+        </div>
+    </div>
+
+    <script>
+        let userToken = null;
+        let userName = null;
+        let userEmail = null;
+        let userPicture = null;
+
+        // Initialize timestamp for initial message
+        document.getElementById('initialTime').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        function handleCredentialResponse(response) {
+            userToken = response.credential;
+            
+            // Decode JWT to get user info (for display only)
+            try {
+                const payload = JSON.parse(atob(response.credential.split('.')[1]));
+                userName = payload.name;
+                userEmail = payload.email;
+                userPicture = payload.picture;
+                
+                // Show chat interface
+                document.getElementById('loginContainer').classList.add('hidden');
+                document.getElementById('chatContainer').classList.remove('hidden');
+                
+                // Update user info in header
+                document.getElementById('userName').textContent = userName;
+                document.getElementById('userEmail').textContent = userEmail;
+                document.getElementById('userAvatar').src = userPicture;
+                
+                console.log('User signed in:', { name: userName, email: userEmail });
+            } catch (error) {
+                console.error('Error decoding JWT:', error);
+                alert('Sign-in failed. Please try again.');
+            }
+        }
+
+        function signOut() {
+            if (confirm('Are you sure you want to sign out?')) {
+                google.accounts.id.disableAutoSelect();
+                userToken = null;
+                userName = null;
+                userEmail = null;
+                userPicture = null;
+                
+                // Show login interface
+                document.getElementById('chatContainer').classList.add('hidden');
+                document.getElementById('loginContainer').classList.remove('hidden');
+                
+                // Clear chat messages
+                const messagesContainer = document.getElementById('chatMessages');
+                messagesContainer.innerHTML = `
+                    <div class="message bot">
+                        <div class="message-avatar">🤖</div>
+                        <div class="message-content">
+                            Hello! I'm your WSO2 AI assistant. How can I help you today?
+                            <div class="message-time">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                        </div>
+                    </div>
+                `;
+                
+                console.log('User signed out');
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const sendButton = document.getElementById('sendButton');
+            const message = input.value.trim();
+            
+            if (!message || !userToken) return;
+            
+            // Disable input while processing
+            input.disabled = true;
+            sendButton.disabled = true;
+            sendButton.innerHTML = '<div class="spinner"></div>';
+            
+            // Add user message to chat
+            addMessage(message, 'user');
+            input.value = '';
+            
+            // Add loading message
+            const loadingMsg = addMessage('<div class="loading"><div class="spinner"></div>Thinking...</div>', 'bot', true);
+            
+            try {
+                const response = await fetch('http://127.0.0.1:8000/ask', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${userToken}`
+                    },
+                    body: JSON.stringify({ query: message })
+                });
+                
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        throw new Error('Your session has expired. Please sign in again.');
+                    }
+                    throw new Error('Failed to get response from server');
+                }
+                
+                const data = await response.json();
+                
+                // Replace loading message with actual response
+                loadingMsg.innerHTML = data.answer || "I apologize, but I couldn't process your request at the moment.";
+                
+                // Add reference URLs if available
+                if (data.url && data.url.length > 0) {
+                    const urlsHtml = data.url.map(url => 
+                        `<a href="${url}" target="_blank" style="color: #4285f4; text-decoration: none; font-size: 12px; display: block; margin-top: 8px;">${url}</a>`
+                    ).join('');
+                    loadingMsg.innerHTML += urlsHtml;
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                loadingMsg.innerHTML = error.message || 'Sorry, there was an error processing your request. Please try again.';
+                
+                // If authentication failed, sign out user
+                if (error.message && error.message.includes('session has expired')) {
+                    setTimeout(() => signOut(), 2000);
+                }
+            } finally {
+                // Re-enable input
+                input.disabled = false;
+                sendButton.disabled = false;
+                sendButton.textContent = 'Send';
+                input.focus();
+            }
+        }
+
+        function addMessage(text, type, isLoading = false) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const avatar = type === 'user' ? 
+                `<img src="${userPicture}" alt="User" style="width: 32px; height: 32px; border-radius: 50%;">` :
+                '<div class="message-avatar">🤖</div>';
+            
+            messageDiv.innerHTML = `
+                ${avatar}
+                <div class="message-content">
+                    ${text}
+                    ${!isLoading ? `<div class="message-time">${currentTime}</div>` : ''}
+                </div>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            return messageDiv.querySelector('.message-content');
+        }
+
+        // Initialize Google Sign-In when page loads
+        window.onload = function () {
+            if (window.google) {
+                google.accounts.id.initialize({
+                    client_id: "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
+                    callback: handleCredentialResponse
+                });
+                console.log('Google Sign-In initialized');
+            } else {
+                console.error('Google Sign-In script not loaded');
+            }
+        };
+
+        // Focus input when chat is shown
+        document.addEventListener('DOMContentLoaded', function() {
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.target.id === 'chatContainer' && !mutation.target.classList.contains('hidden')) {
+                        setTimeout(() => {
+                            document.getElementById('messageInput').focus();
+                        }, 100);
+                    }
+                });
+            });
+            
+            observer.observe(document.getElementById('chatContainer'), {
+                attributes: true,
+                attributeFilter: ['class']
+            });
+        });
+    </script>
+</body>
+</html>
