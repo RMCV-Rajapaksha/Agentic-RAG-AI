@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WSO2 AI Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .chat-container {
+            max-width: 700px;
+            width: 90%;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+        }
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+        .user-details {
+            display: flex;
+            flex-direction: column;
+        }
+        .user-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .user-email {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        .sign-out-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        .sign-out-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        .message {
+            margin: 12px 0;
+            padding: 12px 16px;
+            border-radius: 12px;
+            max-width: 80%;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .user-message {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+        .bot-message {
+            background: white;
+            color: #333;
+            margin-right: auto;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .chat-input {
+            display: flex;
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            gap: 12px;
+        }
+        .chat-input input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 24px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .chat-input input:focus {
+            border-color: #667eea;
+        }
+        .chat-input button {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 24px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        .chat-input button:hover {
+            transform: scale(1.05);
+        }
+        .chat-input button:active {
+            transform: scale(0.95);
+        }
+        .login-container {
+            text-align: center;
+            padding: 60px 40px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 400px;
+        }
+        .login-container h2 {
+            color: #333;
+            margin-bottom: 12px;
+            font-size: 28px;
+        }
+        .login-container p {
+            color: #666;
+            margin-bottom: 32px;
+            font-size: 16px;
+        }
+        .google-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: white;
+            color: #444;
+            border: 2px solid #ddd;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+        .google-btn:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+            transform: translateY(-2px);
+        }
+        .google-icon {
+            width: 24px;
+            height: 24px;
+        }
+        .hidden { display: none; }
+        .loading {
+            opacity: 0.6;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div id="loginContainer" class="login-container">
+        <h2>🤖 WSO2 AI Assistant</h2>
+        <p>Sign in with Google to start chatting</p>
+        <a href="http://127.0.0.1:8000/auth/google/login" class="google-btn">
+            <svg class="google-icon" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            Sign in with Google
+        </a>
+    </div>
+
+    <div id="chatContainer" class="chat-container hidden">
+        <div class="chat-header">
+            <div class="user-info">
+                <img id="userAvatar" class="user-avatar" src="" alt="User">
+                <div class="user-details">
+                    <span id="userName" class="user-name"></span>
+                    <span id="userEmail" class="user-email"></span>
+                </div>
+            </div>
+            <button class="sign-out-btn" onclick="signOut()">Sign Out</button>
+        </div>
+        <div id="chatMessages" class="chat-messages">
+            <div class="message bot-message">
+                👋 Hello! I'm your WSO2 AI assistant. How can I help you today?
+            </div>
+        </div>
+        <div class="chat-input">
+            <input type="text" id="messageInput" placeholder="Type your message..." 
+                   onkeypress="if(event.key==='Enter') sendMessage()">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://127.0.0.1:8000';
+
+        async function signOut() {
+            try {
+                await fetch(`${API_BASE_URL}/auth/logout`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                
+                // Show login interface
+                document.getElementById('chatContainer').classList.add('hidden');
+                document.getElementById('loginContainer').classList.remove('hidden');
+                
+                // Clear chat messages
+                document.getElementById('chatMessages').innerHTML = `
+                    <div class="message bot-message">
+                        👋 Hello! I'm your WSO2 AI assistant. How can I help you today?
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // Add user message to chat
+            addMessage(message, 'user');
+            input.value = '';
+            
+            // Add loading message
+            const loadingMsg = addMessage('Thinking...', 'bot');
+            loadingMsg.classList.add('loading');
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/ask`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ query: message })
+                });
+                
+                if (response.status === 401) {
+                    signOut();
+                    alert('Session expired. Please sign in again.');
+                    return;
+                }
+                
+                if (!response.ok) {
+                    throw new Error('Request failed');
+                }
+                
+                const data = await response.json();
+                
+                // Replace loading message with actual response
+                loadingMsg.textContent = data.answer;
+                loadingMsg.classList.remove('loading');
+                
+            } catch (error) {
+                loadingMsg.textContent = '❌ Sorry, there was an error processing your request. Please try again.';
+                loadingMsg.classList.remove('loading');
+                console.error('Error:', error);
+            }
+        }
+
+        function addMessage(text, type) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}-message`;
+            messageDiv.textContent = text;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            return messageDiv;
+        }
+
+        // Check if user is already logged in on page load
+        async function checkAuth() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/me`, {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const user = await response.json();
+                    document.getElementById('userName').textContent = user.name;
+                    document.getElementById('userEmail').textContent = user.email;
+                    document.getElementById('userAvatar').src = user.picture;
+                    document.getElementById('loginContainer').classList.add('hidden');
+                    document.getElementById('chatContainer').classList.remove('hidden');
+                }
+            } catch (error) {
+                // User not logged in, stay on login page
+            }
+        }
+
+        // Check authentication status on page load
+        checkAuth();
+    </script>
+</body>
+</html>
