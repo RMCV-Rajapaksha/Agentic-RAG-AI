@@ -27,13 +27,14 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-# Google Client ID - get this from Google Cloud Console
+
 GOOGLE_CLIENT_ID = config.google_client_id
 
 async def verify_google_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Verify Google ID token"""
     try:
         token = credentials.credentials
+        print(token)
         idinfo = id_token.verify_oauth2_token(token, requests.Request(), GOOGLE_CLIENT_ID)
         
         if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:

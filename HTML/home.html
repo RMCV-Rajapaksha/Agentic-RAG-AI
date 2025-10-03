@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta name="google-signin-client_id" content="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com">
+    <meta name="google-signin-client_id" content="25036282439-u9ilcglhdef13u5a1b7g54krufmjuetm.apps.googleusercontent.com">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         .chat-container {
@@ -68,7 +68,7 @@
         <h2>WSO2 AI Assistant</h2>
         <p>Please sign in with Google to access the AI assistant</p>
         <div id="g_id_onload"
-             data-client_id="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+             data-client_id="25036282439-u9ilcglhdef13u5a1b7g54krufmjuetm.apps.googleusercontent.com"
              data-callback="handleCredentialResponse">
         </div>
         <div class="g_id_signin" data-type="standard"></div>
@@ -179,8 +179,14 @@
         window.onload = function () {
             google.accounts.id.initialize({
                 client_id: "25036282439-u9ilcglhdef13u5a1b7g54krufmjuetm.apps.googleusercontent.com",
-                callback: handleCredentialResponse
+                callback: handleCredentialResponse,
+                auto_select: false,
+                cancel_on_tap_outside: false
             });
+            google.accounts.id.renderButton(
+                document.querySelector(".g_id_signin"),
+                { theme: "outline", size: "large" }
+            );
         };
     </script>
 </body>

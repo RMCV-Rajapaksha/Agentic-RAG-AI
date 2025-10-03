@@ -22,7 +22,7 @@ class Config:
             self._openai_api_key = self._get_required_env('OPENAI_API_KEY')
             self._db_name = self._get_required_env('DB_NAME')
 
-            self.google_client_id = self._get_required_env('GOOGLE_CLIENT_ID')           
+            self._google_client_id = self._get_required_env('GOOGLE_CLIENT_ID')           
             
             
             self._db_connection_string = self._get_required_env('CONNECTION_STRING')
@@ -51,7 +51,7 @@ class Config:
 
     @property
     def google_client_id(self) -> str:
-        return self.google_client_id
+        return self._google_client_id
 
     
 
@@ -79,7 +79,7 @@ class Config:
 
     # Hide secrets in debug output
     def __repr__(self) -> str:
-        return f"<Config(openai_api_key={'*' * 10 if self._openai_api_key else None}, db_password={'*' * 10 if self._db_password else None})>"
+        return f"<Config(openai_api_key={'*' * 10 if self._openai_api_key else None}, google_client_id={'*' * 10 if self._google_client_id else None})>"
 
 # Singleton accessor
 def get_config() -> Config:
