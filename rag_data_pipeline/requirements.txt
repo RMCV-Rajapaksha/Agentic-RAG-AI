@@ -21,6 +21,7 @@ defusedxml==0.7.1
 deprecated==1.2.18
 dirtyjson==1.0.8
 distro==1.9.0
+docx==0.2.4
 filetype==1.2.0
 frozenlist==1.7.0
 fsspec==2025.9.0
@@ -60,6 +61,7 @@ llama-index-readers-llama-parse==0.5.1
 llama-index-vector-stores-postgres==0.7.0
 llama-index-workflows==2.5.0
 llama-parse==0.6.54
+lxml==6.0.2
 markdownify==1.2.0
 markupsafe==3.0.3
 marshmallow==3.26.1
