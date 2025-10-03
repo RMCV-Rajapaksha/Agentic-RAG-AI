@@ -5,6 +5,82 @@ info:
   version: "1.0.0"
 
 paths:
+  /auth/google/login:
+    get:
+      summary: Initiate Google OAuth login
+      operationId: google_login
+      responses:
+        "302":
+          description: Redirect to Google login page
+
+  /auth/google/callback:
+    get:
+      summary: Google OAuth callback
+      operationId: google_callback
+      parameters:
+        - name: code
+          in: query
+          schema:
+            type: string
+          required: false
+          description: Authorization code returned by Google
+        - name: state
+          in: query
+          schema:
+            type: string
+          required: false
+          description: State parameter for CSRF protection
+      responses:
+        "302":
+          description: Redirect back to frontend with authenticated session
+        "400":
+          description: Authentication failed
+
+  /auth/logout:
+    post:
+      summary: Logout and clear session
+      operationId: logout
+      responses:
+        "200":
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                example:
+                  success: true
+
+  /auth/me:
+    get:
+      summary: Get current authenticated user
+      operationId: get_current_user
+      responses:
+        "200":
+          description: User information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  email:
+                    type: string
+                  name:
+                    type: string
+                  picture:
+                    type: string
+                  sub:
+                    type: string
+                example:
+                  email: "user@example.com"
+                  name: "John Doe"
+                  picture: "https://lh3.googleusercontent.com/a-/AOh14Gi"
+                  sub: "1234567890"
+        "401":
+          description: Unauthorized
+
   /ask:
     post:
       summary: Query the Agentic RAG system
@@ -26,6 +102,9 @@ paths:
                 $ref: "#/components/schemas/QueryResponse"
               example:
                 answer: "WSO2 has AI-based products such as..."
+        "401":
+          description: Unauthorized
+
   /:
     get:
       summary: Health check
@@ -48,6 +127,7 @@ paths:
               example:
                 status: ok
                 message: Agentic RAG API is running
+
 components:
   schemas:
     QueryRequest:
@@ -59,6 +139,7 @@ components:
           example: "What are the AI-based products in WSO2?"
       required:
         - query
+
     QueryResponse:
       type: object
       properties:
