@@ -192,8 +192,8 @@ async def google_callback(request: Request, code: str = None, state: str = None,
             key="session_id",
             value=session.session_id,
             httponly=True,
-            secure=False,  # Set to True in production with HTTPS
-            samesite="lax",
+            secure=True,  # Set to True in production with HTTPS
+            samesite="none",
             max_age=86400  # 24 hours
         )
         response.delete_cookie("oauth_state")
