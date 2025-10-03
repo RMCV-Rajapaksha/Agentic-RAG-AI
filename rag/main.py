@@ -119,8 +119,8 @@ async def google_login():
             value=state, 
             httponly=True, 
             max_age=600, 
-            samesite="lax",
-            secure=False  # Set to True in production
+            samesite="none",
+            secure=True  # Set to True in production
         )
         return response
     except Exception as e:
