@@ -58,7 +58,7 @@ FRONTEND_URLS = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=FRONTEND_URLS,  # Specific origins instead of "*"
+    allow_origins=["*"],  # Specific origins instead of "*"
     allow_credentials=True,  # This is critical for cookies
     allow_methods=["*"],
     allow_headers=["*"],
