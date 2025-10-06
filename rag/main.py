@@ -1,6 +1,6 @@
 import asyncio
 import json
-from fastapi import FastAPI, Depends, HTTPException, status, Cookie, Request
+from fastapi import FastAPI, Depends, HTTPException, status, Cookie, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, JSONResponse
 from pydantic import BaseModel
@@ -12,6 +12,7 @@ from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 import secrets
 from datetime import datetime, timedelta
+from typing import Optional
 
 # --- Configuration ---
 config = get_config()
@@ -48,18 +49,17 @@ if not IS_PRODUCTION:
 # --- FastAPI App Initialization ---
 app = FastAPI(title="Agentic RAG API", description="FastAPI server for Agentic RAG system", version="1.0.0")
 
-# --- CORS Middleware - CRITICAL FIX ---
-# Add your frontend URL explicitly
+# --- CORS Middleware ---
 FRONTEND_URLS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    config.redirect_frontend_uri  # Your deployed frontend if exists
+    config.redirect_frontend_uri
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Specific origins instead of "*"
-    allow_credentials=True,  # This is critical for cookies
+    allow_origins=FRONTEND_URLS if IS_PRODUCTION else ["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"]
@@ -75,25 +75,50 @@ class Session:
         self.created_at = datetime.now()
         self.expires_at = datetime.now() + timedelta(hours=24)
 
-def verify_session(session_id: str = Cookie(None)):
-    """Verify session from cookie"""
-    if not session_id or session_id not in sessions:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, 
-            detail="Not authenticated",
-            headers={"WWW-Authenticate": "Bearer"}
-        )
+def get_session_from_request(
+    session_id: Optional[str] = Cookie(None),
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None)
+) -> Optional[dict]:
+    """
+    Extract session from multiple sources:
+    1. Cookie (session_id)
+    2. Authorization header (Bearer token)
+    3. X-Session-Token header
+    """
+    token = None
     
-    session = sessions[session_id]
+    # Try cookie first
+    if session_id:
+        token = session_id
+        print(f"🍪 Using session from cookie: {token[:10]}...")
+    
+    # Try Authorization header
+    elif authorization and authorization.startswith("Bearer "):
+        token = authorization.replace("Bearer ", "")
+        print(f"🔑 Using session from Authorization header: {token[:10]}...")
+    
+    # Try custom header
+    elif x_session_token:
+        token = x_session_token
+        print(f"📋 Using session from X-Session-Token header: {token[:10]}...")
+    
+    if not token:
+        print("❌ No session token found in request")
+        return None
+    
+    if token not in sessions:
+        print(f"❌ Session token not found in sessions store: {token[:10]}...")
+        return None
+    
+    session = sessions[token]
     
     if datetime.now() > session.expires_at:
-        del sessions[session_id]
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, 
-            detail="Session expired",
-            headers={"WWW-Authenticate": "Bearer"}
-        )
+        print(f"⏰ Session expired: {token[:10]}...")
+        del sessions[token]
+        return None
     
+    print(f"✅ Valid session found for user: {session.user_info.get('email')}")
     return session.user_info
 
 # --- Pydantic Models ---
@@ -108,6 +133,8 @@ class QueryResponse(BaseModel):
 async def startup_event():
     print("🚀 Agentic RAG API is starting up...")
     print(f"📡 Server mode: {'PRODUCTION' if IS_PRODUCTION else 'DEVELOPMENT'}")
+    print(f"🔗 Redirect URI: {REDIRECT_URI}")
+    print(f"🌐 Frontend URI: {config.redirect_frontend_uri}")
     print("📚 API Documentation available at /docs")
     print("✅ Application started successfully!")
 
@@ -128,8 +155,8 @@ async def google_login():
             prompt='consent'
         )
         
-        print(f"Generated auth URL: {authorization_url}")
-        print(f"State: {state}")
+        print(f"🔐 Generated auth URL: {authorization_url}")
+        print(f"📝 State: {state}")
         
         response = RedirectResponse(url=authorization_url)
         response.set_cookie(
@@ -137,23 +164,30 @@ async def google_login():
             value=state, 
             httponly=True, 
             max_age=600,
-            samesite="lax",  # Changed from "none" for better compatibility
-            secure=IS_PRODUCTION
+            samesite="lax",
+            secure=IS_PRODUCTION,
+            path="/"  # Explicitly set path
         )
         return response
     except Exception as e:
-        print(f"Error in google_login: {e}")
+        print(f"❌ Error in google_login: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to initiate login: {str(e)}")
 
 @app.get("/auth/google/callback")
-async def google_callback(request: Request, code: str = None, state: str = None, oauth_state: str = Cookie(None)):
+async def google_callback(
+    request: Request, 
+    code: str = None, 
+    state: str = None, 
+    oauth_state: str = Cookie(None)
+):
     """Google OAuth callback to handle user authentication."""
-    print(f"Callback received - Code: {code[:20] if code else None}..., State: {state}, Cookie State: {oauth_state}")
+    print(f"📥 Callback received - Code: {code[:20] if code else None}..., State: {state}, Cookie State: {oauth_state}")
     
     error = request.query_params.get('error')
     if error:
-        print(f"OAuth error: {error}")
-        raise HTTPException(status_code=400, detail=f"OAuth error: {error}")
+        print(f"❌ OAuth error: {error}")
+        error_url = f"{config.redirect_frontend_uri}?error={error}"
+        return RedirectResponse(url=error_url)
     
     if not code:
         raise HTTPException(status_code=400, detail="No authorization code received")
@@ -162,7 +196,7 @@ async def google_callback(request: Request, code: str = None, state: str = None,
         raise HTTPException(status_code=400, detail="No state parameter received")
     
     if not oauth_state or oauth_state != state:
-        print(f"State mismatch - Cookie: {oauth_state}, Param: {state}")
+        print(f"⚠️ State mismatch - Cookie: {oauth_state}, Param: {state}")
         raise HTTPException(status_code=400, detail="Invalid state parameter - CSRF protection")
     
     try:
@@ -174,18 +208,18 @@ async def google_callback(request: Request, code: str = None, state: str = None,
         
         flow.state = state
         
-        print("Fetching token...")
+        print("🔄 Fetching token...")
         flow.fetch_token(code=code)
         credentials = flow.credentials
         
-        print("Token fetched successfully, verifying ID token...")
+        print("✅ Token fetched successfully, verifying ID token...")
         id_info = id_token.verify_oauth2_token(
             credentials.id_token,
             google_requests.Request(),
             GOOGLE_CLIENT_ID
         )
         
-        print(f"User authenticated: {id_info.get('email')}")
+        print(f"👤 User authenticated: {id_info.get('email')}")
         
         session = Session({
             'email': id_info.get('email'),
@@ -195,22 +229,24 @@ async def google_callback(request: Request, code: str = None, state: str = None,
         })
         sessions[session.session_id] = session
         
-        print(f"Session created: {session.session_id}")
+        print(f"🎫 Session created: {session.session_id}")
+        print(f"📊 Total active sessions: {len(sessions)}")
         
-        # Redirect with session token in URL as fallback
+        # Return session token in URL - frontend will handle storage
         frontend_url = f"{config.redirect_frontend_uri}?session={session.session_id}"
         response = RedirectResponse(url=frontend_url)
         
-        # Try to set cookie (may not work cross-origin)
+        # Still try to set cookie as backup
         response.set_cookie(
             key="session_id",
             value=session.session_id,
             httponly=True,
             secure=IS_PRODUCTION,
-            samesite="lax",  # Changed from "none"
-            max_age=86400
+            samesite="lax",
+            max_age=86400,
+            path="/"  # Explicitly set path
         )
-        response.delete_cookie("oauth_state")
+        response.delete_cookie("oauth_state", path="/")
         
         return response
         
@@ -218,70 +254,45 @@ async def google_callback(request: Request, code: str = None, state: str = None,
         print(f"❌ Error during callback: {type(e).__name__}: {str(e)}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=400, detail=f"Authentication failed: {str(e)}")
+        error_url = f"{config.redirect_frontend_uri}?error=auth_failed"
+        return RedirectResponse(url=error_url)
 
 @app.post("/auth/logout")
-async def logout(session_id: str = Cookie(None)):
+async def logout(
+    session_id: Optional[str] = Cookie(None),
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None)
+):
     """Logout - clear session and cookie."""
-    if session_id and session_id in sessions:
-        del sessions[session_id]
-        print(f"Session {session_id} deleted")
+    # Find session token from any source
+    token = None
+    if session_id:
+        token = session_id
+    elif authorization and authorization.startswith("Bearer "):
+        token = authorization.replace("Bearer ", "")
+    elif x_session_token:
+        token = x_session_token
     
-    response = JSONResponse({"success": True})
-    response.delete_cookie("session_id")
+    if token and token in sessions:
+        del sessions[token]
+        print(f"🚪 Session {token[:10]}... deleted")
+    
+    response = JSONResponse({"success": True, "message": "Logged out successfully"})
+    response.delete_cookie("session_id", path="/")
     return response
 
 @app.get("/auth/me")
 async def get_current_user(
-    session_id: str = Cookie(None),
-    authorization: str = None
+    session_id: Optional[str] = Cookie(None),
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None)
 ):
     """Get current user info if authenticated.
-    Supports both cookie and Authorization header."""
+    Supports cookie, Authorization header, and X-Session-Token header."""
     
-    # Try cookie first
-    if session_id and session_id in sessions:
-        session = sessions[session_id]
-        if datetime.now() <= session.expires_at:
-            return session.user_info
+    print(f"🔍 Checking authentication - Cookie: {bool(session_id)}, Auth Header: {bool(authorization)}, X-Session-Token: {bool(x_session_token)}")
     
-    # Try Authorization header as fallback
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization.replace("Bearer ", "")
-        if token in sessions:
-            session = sessions[token]
-            if datetime.now() <= session.expires_at:
-                return session.user_info
-    
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Not authenticated"
-    )
-
-@app.post("/ask", response_model=QueryResponse)
-async def ask_agent(
-    request: QueryRequest,
-    session_id: str = Cookie(None),
-    authorization: str = None
-):
-    """Protected endpoint to interact with the agent.
-    Supports both cookie and Authorization header."""
-    
-    user_info = None
-    
-    # Try cookie first
-    if session_id and session_id in sessions:
-        session = sessions[session_id]
-        if datetime.now() <= session.expires_at:
-            user_info = session.user_info
-    
-    # Try Authorization header as fallback
-    if not user_info and authorization and authorization.startswith("Bearer "):
-        token = authorization.replace("Bearer ", "")
-        if token in sessions:
-            session = sessions[token]
-            if datetime.now() <= session.expires_at:
-                user_info = session.user_info
+    user_info = get_session_from_request(session_id, authorization, x_session_token)
     
     if not user_info:
         raise HTTPException(
@@ -289,16 +300,59 @@ async def ask_agent(
             detail="Not authenticated"
         )
     
-    print(f"Query from user: {user_info.get('email', 'Unknown')} - {user_info.get('name', 'Unknown')}")
-    response_data = await run_agent_async(request.query)
+    return user_info
 
+@app.post("/ask", response_model=QueryResponse)
+async def ask_agent(
+    request: QueryRequest,
+    session_id: Optional[str] = Cookie(None),
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None)
+):
+    """Protected endpoint to interact with the agent.
+    Supports cookie, Authorization header, and X-Session-Token header."""
+    
+    user_info = get_session_from_request(session_id, authorization, x_session_token)
+    
+    if not user_info:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated"
+        )
+    
+    print(f"💬 Query from user: {user_info.get('email', 'Unknown')} - {user_info.get('name', 'Unknown')}")
+    print(f"❓ Query: {request.query}")
+    
+    response_data = await run_agent_async(request.query)
     answer = response_data.answer if hasattr(response_data, 'answer') else str(response_data)
+    
     return {"answer": answer}
 
 @app.get("/")
 def health_check():
     """Health check endpoint."""
-    return {"status": "ok", "message": "Agentic RAG API is running"}
+    return {
+        "status": "ok", 
+        "message": "Agentic RAG API is running",
+        "active_sessions": len(sessions)
+    }
+
+@app.get("/debug/sessions")
+async def debug_sessions():
+    """Debug endpoint to check active sessions (remove in production)"""
+    if not IS_PRODUCTION:
+        return {
+            "active_sessions": len(sessions),
+            "sessions": [
+                {
+                    "id": sid[:10] + "...",
+                    "email": s.user_info.get('email'),
+                    "expires_at": s.expires_at.isoformat()
+                }
+                for sid, s in sessions.items()
+            ]
+        }
+    return {"message": "Debug endpoint disabled in production"}
 
 # --- Main Execution ---
 if __name__ == "__main__":
