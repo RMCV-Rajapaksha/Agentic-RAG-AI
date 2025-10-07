@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Bot, User, Loader2 } from 'lucide-react';
+import { Send, Bot, User, Loader2, LogOut, UserCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useAuth } from '@/contexts/AuthContext';
+import { API_BASE_URL } from '@/config/auth';
 
 interface Message {
   id: string;
@@ -17,6 +19,7 @@ interface Message {
 }
 
 const ChatInterface = () => {
+  const { user, token, logout } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -59,10 +62,11 @@ const ChatInterface = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/ask', {
+      const response = await fetch(`${API_BASE_URL}/ask`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           query: currentInput,
@@ -71,6 +75,9 @@ const ChatInterface = () => {
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Authentication failed. Please sign in again.');
+        }
         throw new Error('Failed to get response from server');
       }
 
@@ -89,11 +96,18 @@ const ChatInterface = () => {
       console.error('Error sending message:', error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: "I'm sorry, but I'm having trouble connecting to the server. Please check if the API is running on http://127.0.0.1:8000 and try again.",
+        content: error instanceof Error 
+          ? error.message 
+          : `I'm sorry, but I'm having trouble connecting to the server. Please check if the API is running on ${API_BASE_URL} and try again.`,
         type: 'ai',
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, errorMessage]);
+      
+      // If authentication failed, logout user
+      if (error instanceof Error && error.message.includes('Authentication failed')) {
+        logout();
+      }
     } finally {
       setIsLoading(false);
     }
@@ -112,15 +126,51 @@ const ChatInterface = () => {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-center py-6"
+        className="space-y-4"
       >
-        <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full chat-gradient shadow-lg">
-          <Bot className="w-6 h-6 text-white" />
-          <h1 className="text-2xl font-bold text-white">WSO2 AI Assistant</h1>
+        {/* User Info Bar */}
+        <div className="flex justify-between items-center bg-white rounded-lg shadow-sm border p-4">
+          <div className="flex items-center gap-3">
+            <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full chat-gradient">
+              <Bot className="w-5 h-5 text-white" />
+              <span className="text-lg font-bold text-white">WSO2 AI Assistant</span>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              {user?.picture ? (
+                <img 
+                  src={user.picture} 
+                  alt={user.name}
+                  className="w-8 h-8 rounded-full border-2 border-gray-200"
+                />
+              ) : (
+                <UserCircle className="w-8 h-8 text-gray-400" />
+              )}
+              <div className="text-right">
+                <p className="text-sm font-medium text-gray-900">{user?.name}</p>
+                <p className="text-xs text-gray-500">{user?.email}</p>
+              </div>
+            </div>
+            <Button 
+              onClick={logout}
+              variant="outline" 
+              size="sm"
+              className="text-gray-600 hover:text-red-600 hover:border-red-300"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
         </div>
-        <p className="text-muted-foreground mt-4 text-lg">
-          Your intelligent guide to WSO2 knowledge and documentation
-        </p>
+
+        {/* Title Section */}
+        <div className="text-center py-4">
+          <p className="text-muted-foreground text-lg">
+            Your intelligent guide to WSO2 knowledge and documentation
+          </p>
+        </div>
       </motion.div>
 
       {/* Chat Messages */}

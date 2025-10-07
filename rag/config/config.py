@@ -21,9 +21,13 @@ class Config:
             
             self._openai_api_key = self._get_required_env('OPENAI_API_KEY')
             self._db_name = self._get_required_env('DB_NAME')
-           
-            
-            
+
+            self._google_client_id = self._get_required_env('GOOGLE_CLIENT_ID')    
+            self._google_client_secret = self._get_required_env('GOOGLE_CLIENT_SECRET')       
+            self._redirect_uri = self._get_required_env('REDIRECT_URI')
+            self._redirect_frontend_uri = self.get_env_var('REDIRECT_FRONTEND_URI')
+
+
             self._db_connection_string = self._get_required_env('CONNECTION_STRING')
             self._db_name = self._get_required_env('DB_NAME')
             self._db_table_name = self._get_required_env('DB_TABLE_NAME')
@@ -48,11 +52,21 @@ class Config:
     def db_name(self) -> str:
         return self._db_name
 
+    @property
+    def google_client_id(self) -> str:
+        return self._google_client_id
     
+    @property
+    def google_client_secret(self) -> str:
+        return self._google_client_secret
 
-    
+    @property
+    def redirect_uri(self) -> str:
+        return self._redirect_uri
 
-    
+    @property
+    def redirect_frontend_uri(self) -> str:
+        return self._redirect_frontend_uri
 
     @property
     def db_connection_string(self) -> str:
@@ -78,7 +92,7 @@ class Config:
 
     # Hide secrets in debug output
     def __repr__(self) -> str:
-        return f"<Config(openai_api_key={'*' * 10 if self._openai_api_key else None}, db_password={'*' * 10 if self._db_password else None})>"
+        return f"<Config(openai_api_key={'*' * 10 if self._openai_api_key else None}, google_client_id={'*' * 10 if self._google_client_id else None})>"
 
 # Singleton accessor
 def get_config() -> Config:
