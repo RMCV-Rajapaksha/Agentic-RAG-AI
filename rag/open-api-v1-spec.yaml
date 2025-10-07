@@ -1,22 +1,79 @@
 openapi: 3.0.3
 info:
   title: Agentic RAG API
-  description: FastAPI server for Agentic RAG system
+  description: |
+    FastAPI server for Agentic RAG system with Google OAuth authentication.
+    
+    ## Authentication
+    This API uses cookie-based session authentication with Google OAuth 2.0.
+    
+    ### Authentication Flow:
+    1. Call `/auth/google/login` to initiate OAuth flow
+    2. User is redirected to Google for authentication
+    3. Google redirects back to `/auth/google/callback`
+    4. Session cookie is automatically set (httpOnly, secure)
+    5. Use authenticated endpoints with cookie automatically sent
+    6. Call `/auth/logout` to end session
+    
+    ### CORS Configuration
+    - Supports cross-origin requests from configured frontend URLs
+    - Credentials (cookies) are enabled
+    - Supports Google Sites and Google user content domains
   version: "1.0.0"
+  contact:
+    name: API Support
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8000
+    description: Development server
+  - url: https://your-production-domain.com
+    description: Production server
 
 paths:
   /auth/google/login:
     get:
       summary: Initiate Google OAuth login
+      description: |
+        Initiates the Google OAuth 2.0 authentication flow.
+        Redirects the user to Google's authorization page.
+        Sets an `oauth_state` cookie for CSRF protection.
       operationId: google_login
+      tags:
+        - Authentication
       responses:
         "302":
-          description: Redirect to Google login page
+          description: Redirect to Google OAuth authorization page
+          headers:
+            Set-Cookie:
+              description: OAuth state cookie for CSRF protection
+              schema:
+                type: string
+                example: oauth_state=random_state_value; HttpOnly; Max-Age=600; SameSite=none
+            Location:
+              description: Google OAuth authorization URL
+              schema:
+                type: string
+                example: https://accounts.google.com/o/oauth2/auth?...
+        "500":
+          description: Failed to initiate login
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /auth/google/callback:
     get:
-      summary: Google OAuth callback
+      summary: Google OAuth callback endpoint
+      description: |
+        Callback endpoint for Google OAuth 2.0 flow.
+        Receives authorization code, exchanges it for tokens, verifies user identity,
+        creates a session, and sets a session cookie.
+        Redirects user back to frontend application.
       operationId: google_callback
+      tags:
+        - Authentication
       parameters:
         - name: code
           in: query
@@ -29,70 +86,141 @@ paths:
           schema:
             type: string
           required: false
-          description: State parameter for CSRF protection
+          description: State parameter for CSRF protection (must match cookie)
+        - name: error
+          in: query
+          schema:
+            type: string
+          required: false
+          description: Error code if authentication failed
+        - name: oauth_state
+          in: cookie
+          schema:
+            type: string
+          required: false
+          description: State cookie set during login (for CSRF verification)
       responses:
         "302":
-          description: Redirect back to frontend with authenticated session
+          description: Redirect back to frontend with session cookie set
+          headers:
+            Set-Cookie:
+              description: Session cookie containing authentication token
+              schema:
+                type: string
+                example: session_token=secure_token; HttpOnly; Max-Age=86400; SameSite=none; Secure
+            Location:
+              description: Frontend URL
+              schema:
+                type: string
         "400":
-          description: Authentication failed
+          description: Bad request - missing code, state, or CSRF validation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Authentication processing error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /auth/logout:
     post:
       summary: Logout and clear session
+      description: |
+        Ends the user's session and clears the session cookie.
+        Removes the session from the server's session store.
       operationId: logout
+      tags:
+        - Authentication
+      parameters:
+        - name: session_token
+          in: cookie
+          schema:
+            type: string
+          required: false
+          description: Session token cookie
       responses:
         "200":
           description: Logout successful
+          headers:
+            Set-Cookie:
+              description: Deleted session cookie
+              schema:
+                type: string
+                example: session_token=; Max-Age=0
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                example:
-                  success: true
+                $ref: "#/components/schemas/LogoutResponse"
 
   /auth/me:
     get:
       summary: Get current authenticated user
+      description: |
+        Returns information about the currently authenticated user.
+        Requires a valid session cookie.
       operationId: get_current_user
+      tags:
+        - Authentication
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: session_token
+          in: cookie
+          schema:
+            type: string
+          required: false
+          description: Session token cookie
       responses:
         "200":
           description: User information
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  email:
-                    type: string
-                  name:
-                    type: string
-                  picture:
-                    type: string
-                  sub:
-                    type: string
-                example:
-                  email: "user@example.com"
-                  name: "John Doe"
-                  picture: "https://lh3.googleusercontent.com/a-/AOh14Gi"
-                  sub: "1234567890"
+                $ref: "#/components/schemas/UserInfo"
         "401":
-          description: Unauthorized
+          description: Not authenticated or session expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /ask:
     post:
       summary: Query the Agentic RAG system
+      description: |
+        Submit a query to the Agentic RAG system.
+        Requires authentication via session cookie.
+        The agent will process the query and return an answer.
       operationId: ask_agent
+      tags:
+        - RAG Agent
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: session_token
+          in: cookie
+          schema:
+            type: string
+          required: false
+          description: Session token cookie
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/QueryRequest"
-            example:
-              query: "video rag"
+            examples:
+              simple_query:
+                summary: Simple query example
+                value:
+                  query: "What is video RAG?"
+              detailed_query:
+                summary: Detailed query example
+                value:
+                  query: "Explain how Agentic RAG works with LlamaIndex"
       responses:
         "200":
           description: Successful Response
@@ -100,35 +228,71 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/QueryResponse"
-              example:
-                answer: "WSO2 has AI-based products such as..."
+              examples:
+                success:
+                  summary: Successful query response
+                  value:
+                    answer: "Video RAG (Retrieval-Augmented Generation) is a technique that combines video content analysis with large language models..."
         "401":
-          description: Unauthorized
-
-  /:
-    get:
-      summary: Health check
-      operationId: health_check
-      responses:
-        "200":
-          description: Successful Response
+          description: Not authenticated
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                  message:
-                    type: string
-                required:
-                  - status
-                  - message
-              example:
-                status: ok
-                message: Agentic RAG API is running
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Agent processing error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /:
+    get:
+      summary: Health check endpoint
+      description: |
+        Returns the API status and number of active sessions.
+        Does not require authentication.
+      operationId: health_check
+      tags:
+        - System
+      responses:
+        "200":
+          description: API is running
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthCheckResponse"
+
+  /debug/sessions:
+    get:
+      summary: Debug endpoint for active sessions
+      description: |
+        Returns information about active sessions.
+        Only available in development mode (disabled in production).
+      operationId: debug_sessions
+      tags:
+        - Debug
+      responses:
+        "200":
+          description: Session information (development) or disabled message (production)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/DebugSessionsResponse"
+                  - $ref: "#/components/schemas/DebugDisabledResponse"
 
 components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: session_token
+      description: |
+        Session-based authentication using httpOnly cookies.
+        The session token is automatically set after successful Google OAuth login
+        and is sent automatically with each request by the browser.
+
   schemas:
     QueryRequest:
       type: object
@@ -136,6 +300,7 @@ components:
         query:
           type: string
           description: User query for the Agentic RAG system
+          minLength: 1
           example: "What are the AI-based products in WSO2?"
       required:
         - query
@@ -146,6 +311,139 @@ components:
         answer:
           type: string
           description: Answer generated by the Agentic RAG system
-          example: "WSO2 has AI-based products such as..."
+          example: "WSO2 has AI-based products such as Asgardeo for identity management, Choreo for API development, and various AI-powered integration solutions..."
       required:
         - answer
+
+    UserInfo:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          description: User's email address from Google account
+          example: "user@example.com"
+        name:
+          type: string
+          description: User's full name from Google account
+          example: "John Doe"
+        picture:
+          type: string
+          format: uri
+          description: URL to user's profile picture from Google
+          example: "https://lh3.googleusercontent.com/a-/AOh14GiXXXXXXXXXXXX"
+        sub:
+          type: string
+          description: Google's unique identifier for the user
+          example: "1234567890123456789"
+      required:
+        - email
+        - name
+        - picture
+        - sub
+
+    LogoutResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Indicates if logout was successful
+          example: true
+        message:
+          type: string
+          description: Logout confirmation message
+          example: "Logged out successfully"
+      required:
+        - success
+        - message
+
+    HealthCheckResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          description: API status
+          enum: [ok]
+          example: "ok"
+        message:
+          type: string
+          description: Status message
+          example: "Agentic RAG API is running"
+        active_sessions:
+          type: integer
+          description: Number of currently active sessions
+          example: 5
+      required:
+        - status
+        - message
+        - active_sessions
+
+    DebugSessionsResponse:
+      type: object
+      properties:
+        active_sessions:
+          type: integer
+          description: Total number of active sessions
+          example: 3
+        sessions:
+          type: array
+          description: List of active session details
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                description: Truncated session ID (first 10 chars + ...)
+                example: "xY9kL2mP7q..."
+              email:
+                type: string
+                format: email
+                description: Email of authenticated user
+                example: "user@example.com"
+              created_at:
+                type: string
+                format: date-time
+                description: Session creation timestamp (ISO 8601)
+                example: "2025-10-07T10:30:00.123456"
+              expires_at:
+                type: string
+                format: date-time
+                description: Session expiry timestamp (ISO 8601)
+                example: "2025-10-08T10:30:00.123456"
+      required:
+        - active_sessions
+        - sessions
+
+    DebugDisabledResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Message indicating debug endpoint is disabled
+          example: "Debug endpoint disabled in production"
+      required:
+        - message
+
+    ErrorResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+          description: Error message describing what went wrong
+          example: "Not authenticated"
+      required:
+        - detail
+
+tags:
+  - name: Authentication
+    description: |
+      Google OAuth 2.0 authentication endpoints.
+      Handles login, logout, and user session management using secure httpOnly cookies.
+  - name: RAG Agent
+    description: |
+      Endpoints for interacting with the Agentic RAG system.
+      Requires authentication.
+  - name: System
+    description: Health check and system status endpoints
+  - name: Debug
+    description: Debug and development endpoints (disabled in production)

@@ -92,7 +92,7 @@ def get_session_from_cookie(session_token: Optional[str] = Cookie(None)) -> Opti
     session = sessions[session_token]
     
     if datetime.now() > session.expires_at:
-        print(f"⏰ Session expired: {session_token[:10]}...")
+        print(f"Session expired: {session_token[:10]}...")
         del sessions[session_token]
         return None
     
@@ -108,12 +108,12 @@ class QueryResponse(BaseModel):
 # --- Event Handlers ---
 @app.on_event("startup")
 async def startup_event():
-    print("🚀 Agentic RAG API is starting up...")
-    print(f"📡 Server mode: {'PRODUCTION' if IS_PRODUCTION else 'DEVELOPMENT'}")
-    print(f"🔗 Redirect URI: {REDIRECT_URI}")
-    print(f"🌐 Frontend URI: {config.redirect_frontend_uri}")
-    print("📚 API Documentation available at /docs")
-    print("✅ Application started successfully!")
+    print("Agentic RAG API is starting up...")
+    print(f"Server mode: {'PRODUCTION' if IS_PRODUCTION else 'DEVELOPMENT'}")
+    print(f"Redirect URI: {REDIRECT_URI}")
+    print(f"Frontend URI: {config.redirect_frontend_uri}")
+    print("API Documentation available at /docs")
+    print("Application started successfully!")
 
 # --- API Endpoints ---
 @app.get("/auth/google/login")
@@ -132,8 +132,8 @@ async def google_login():
             prompt='consent'
         )
         
-        print(f"🔐 Generated auth URL: {authorization_url}")
-        print(f"📝 State: {state}")
+        print(f"Generated auth URL: {authorization_url}")
+        print(f"State: {state}")
         
         # Store state in a cookie for CSRF protection
         response = RedirectResponse(url=authorization_url)
@@ -147,7 +147,7 @@ async def google_login():
         )
         return response
     except Exception as e:
-        print(f"❌ Error in google_login: {e}")
+        print(f"Error in google_login: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to initiate login: {str(e)}")
 
 @app.get("/auth/google/callback")
@@ -158,11 +158,11 @@ async def google_callback(
     oauth_state: str = Cookie(None)
 ):
     """Google OAuth callback - sets session cookie instead of URL redirect."""
-    print(f"📥 Callback received - Code: {code[:20] if code else None}..., State: {state}, Cookie State: {oauth_state}")
+    print(f"Callback received - Code: {code[:20] if code else None}..., State: {state}, Cookie State: {oauth_state}")
     
     error = request.query_params.get('error')
     if error:
-        print(f"❌ OAuth error: {error}")
+        print(f"OAuth error: {error}")
         error_url = f"{config.redirect_frontend_uri}?error={error}"
         return RedirectResponse(url=error_url)
     
@@ -173,7 +173,7 @@ async def google_callback(
         raise HTTPException(status_code=400, detail="No state parameter received")
     
     if not oauth_state or oauth_state != state:
-        print(f"⚠️ State mismatch - Cookie: {oauth_state}, Param: {state}")
+        print(f"State mismatch - Cookie: {oauth_state}, Param: {state}")
         raise HTTPException(status_code=400, detail="Invalid state parameter - CSRF protection")
     
     try:
@@ -185,18 +185,18 @@ async def google_callback(
         
         flow.state = state
         
-        print("🔄 Fetching token...")
+        print("Fetching token...")
         flow.fetch_token(code=code)
         credentials = flow.credentials
         
-        print("✅ Token fetched successfully, verifying ID token...")
+        print("Token fetched successfully, verifying ID token...")
         id_info = id_token.verify_oauth2_token(
             credentials.id_token,
             google_requests.Request(),
             GOOGLE_CLIENT_ID
         )
         
-        print(f"👤 User authenticated: {id_info.get('email')}")
+        print(f"User authenticated: {id_info.get('email')}")
         
         # Create session
         session = Session({
@@ -207,8 +207,8 @@ async def google_callback(
         })
         sessions[session.session_id] = session
         
-        print(f"🎫 Session created: {session.session_id[:10]}...")
-        print(f"📊 Total active sessions: {len(sessions)}")
+        print(f"Session created: {session.session_id[:10]}...")
+        print(f"Total active sessions: {len(sessions)}")
         
         # Redirect to frontend WITHOUT session in URL
         response = RedirectResponse(url=config.redirect_frontend_uri)
@@ -227,12 +227,12 @@ async def google_callback(
         # Clear the oauth_state cookie
         response.delete_cookie("oauth_state")
         
-        print(f"🍪 Session cookie set for user: {id_info.get('email')}")
+        print(f"Session cookie set for user: {id_info.get('email')}")
         
         return response
         
     except Exception as e:
-        print(f"❌ Error during callback: {type(e).__name__}: {str(e)}")
+        print(f"Error during callback: {type(e).__name__}: {str(e)}")
         import traceback
         traceback.print_exc()
         error_url = f"{config.redirect_frontend_uri}?error=auth_failed"
@@ -243,8 +243,8 @@ async def logout(response: Response, session_token: Optional[str] = Cookie(None)
     """Logout - clear session and cookie."""
     if session_token and session_token in sessions:
         del sessions[session_token]
-        print(f"🚪 Session {session_token[:10]}... deleted")
-        print(f"📊 Remaining active sessions: {len(sessions)}")
+        print(f"Session {session_token[:10]}... deleted")
+        print(f"Remaining active sessions: {len(sessions)}")
     
     # Clear the session cookie
     response.delete_cookie("session_token", samesite="none", secure=IS_PRODUCTION)
@@ -255,7 +255,7 @@ async def logout(response: Response, session_token: Optional[str] = Cookie(None)
 async def get_current_user(session_token: Optional[str] = Cookie(None)):
     """Get current user info if authenticated."""
     
-    print(f"🔍 Checking authentication - Cookie present: {bool(session_token)}")
+    print(f"Checking authentication - Cookie present: {bool(session_token)}")
     
     user_info = get_session_from_cookie(session_token)
     
@@ -265,7 +265,7 @@ async def get_current_user(session_token: Optional[str] = Cookie(None)):
             detail="Not authenticated"
         )
     
-    print(f"✅ Valid session found for user: {user_info.get('email')}")
+    print(f"Valid session found for user: {user_info.get('email')}")
     return user_info
 
 @app.post("/ask", response_model=QueryResponse)
@@ -283,15 +283,15 @@ async def ask_agent(
             detail="Not authenticated"
         )
     
-    print(f"💬 Query from user: {user_info.get('email', 'Unknown')} - {user_info.get('name', 'Unknown')}")
-    print(f"❓ Query: {request.query}")
+    print(f"Query from user: {user_info.get('email', 'Unknown')} - {user_info.get('name', 'Unknown')}")
+    print(f"Query: {request.query}")
     
     try:
         response_data = await run_agent_async(request.query)
         answer = response_data.answer if hasattr(response_data, 'answer') else str(response_data)
         return {"answer": answer}
     except Exception as e:
-        print(f"❌ Error in ask_agent: {str(e)}")
+        print(f"Error in ask_agent: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
 
 @app.get("/")
@@ -303,26 +303,10 @@ def health_check():
         "active_sessions": len(sessions)
     }
 
-@app.get("/debug/sessions")
-async def debug_sessions():
-    """Debug endpoint to check active sessions (remove in production)"""
-    if not IS_PRODUCTION:
-        return {
-            "active_sessions": len(sessions),
-            "sessions": [
-                {
-                    "id": sid[:10] + "...",
-                    "email": s.user_info.get('email'),
-                    "created_at": s.created_at.isoformat(),
-                    "expires_at": s.expires_at.isoformat()
-                }
-                for sid, s in sessions.items()
-            ]
-        }
-    return {"message": "Debug endpoint disabled in production"}
+
 
 # --- Main Execution ---
 if __name__ == "__main__":
     import uvicorn
-    print("🔥 Starting Agentic RAG API Server...")
+    print("Starting Agentic RAG API Server...")
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

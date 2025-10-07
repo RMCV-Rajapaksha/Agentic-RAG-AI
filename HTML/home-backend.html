@@ -1,238 +1,189 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WSO2 AI Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
         }
+        
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        
+        .typing-dot {
+            animation: typing 1.4s infinite;
+        }
+        
+        .typing-dot:nth-child(1) { animation-delay: 0s; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        
+        .gradient-border {
+            background: linear-gradient(45deg, #002c53, #073763, #002c53);
+            padding: 2px;
+            border-radius: 12px;
+        }
+        
+        .gradient-border-inner {
+            background: white;
+            border-radius: 10px;
+        }
+        
         .chat-container {
-            max-width: 700px;
-            width: 90%;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            height: 600px;
+            height: calc(100vh - 140px);
         }
-        .chat-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: 2px solid white;
-        }
-        .user-details {
-            display: flex;
-            flex-direction: column;
-        }
-        .user-name {
+        
+        .markdown-content h3 {
+            font-size: 1.125rem;
             font-weight: 600;
-            font-size: 14px;
+            margin: 1rem 0 0.5rem 0;
+            color: #002c53;
         }
-        .user-email {
-            font-size: 12px;
-            opacity: 0.9;
+        
+        .markdown-content ul {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
         }
-        .sign-out-btn {
-            background: rgba(255,255,255,0.2);
-            border: none;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background 0.3s;
+        
+        .markdown-content li {
+            margin: 0.25rem 0;
         }
-        .sign-out-btn:hover {
-            background: rgba(255,255,255,0.3);
-        }
-        .chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            background: #f8f9fa;
-        }
-        .message {
-            margin: 12px 0;
-            padding: 12px 16px;
-            border-radius: 12px;
-            max-width: 80%;
-            animation: slideIn 0.3s ease;
-        }
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        .user-message {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            margin-left: auto;
-            border-bottom-right-radius: 4px;
-        }
-        .bot-message {
-            background: white;
-            color: #333;
-            margin-right: auto;
-            border-bottom-left-radius: 4px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .chat-input {
-            display: flex;
-            padding: 20px;
-            background: white;
-            border-top: 1px solid #e0e0e0;
-            gap: 12px;
-        }
-        .chat-input input {
-            flex: 1;
-            padding: 12px 16px;
-            border: 2px solid #e0e0e0;
-            border-radius: 24px;
-            font-size: 14px;
-            outline: none;
-            transition: border-color 0.3s;
-        }
-        .chat-input input:focus {
-            border-color: #667eea;
-        }
-        .chat-input button {
-            padding: 12px 24px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 24px;
-            cursor: pointer;
+        
+        .markdown-content strong {
             font-weight: 600;
-            transition: transform 0.2s;
+            color: #002c53;
         }
-        .chat-input button:hover {
-            transform: scale(1.05);
+        
+        .markdown-content a {
+            color: #073763;
+            text-decoration: underline;
         }
-        .chat-input button:active {
-            transform: scale(0.95);
+        
+        .markdown-content a:hover {
+            color: #002c53;
         }
-        .login-container {
-            text-align: center;
-            padding: 60px 40px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            max-width: 400px;
-        }
-        .login-container h2 {
-            color: #333;
-            margin-bottom: 12px;
-            font-size: 28px;
-        }
-        .login-container p {
-            color: #666;
-            margin-bottom: 32px;
-            font-size: 16px;
-        }
-        .google-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 12px;
-            background: white;
-            color: #444;
-            border: 2px solid #ddd;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-decoration: none;
-        }
-        .google-btn:hover {
-            border-color: #667eea;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
-            transform: translateY(-2px);
-        }
-        .google-icon {
-            width: 24px;
-            height: 24px;
-        }
+        
         .hidden { display: none; }
-        .loading {
-            opacity: 0.6;
-            font-style: italic;
-        }
     </style>
 </head>
-<body>
-    <div id="loginContainer" class="login-container">
-        <h2>🤖 WSO2 AI Assistant</h2>
-        <p>Sign in with Google to start chatting</p>
-        <a href="https://f2c7f522-ef47-48ce-a429-3fc2f15d2011-dev.e1-us-east-azure.choreoapis.dev/chamara/rag-ai-backend-test-vr/v1.0/auth/google/login" class="google-btn">
-            <svg class="google-icon" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-            </svg>
-            Sign in with Google
-        </a>
+<body class="bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
+    <!-- Login Container -->
+    <div id="loginContainer" class="flex items-center justify-center min-h-screen">
+        <div class="text-center p-12 bg-white rounded-xl shadow-2xl max-w-md fade-in">
+            <div class="mb-6">
+                <div class="inline-block p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-full mb-4">
+                    <svg class="w-16 h-16 text-[#002c53]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                    </svg>
+                </div>
+                <h2 class="text-3xl font-bold bg-gradient-to-r from-[#002c53] to-[#073763] bg-clip-text text-transparent mb-2">
+                    WSO2 AI Assistant
+                </h2>
+                <p class="text-gray-600">Sign in with Google to start chatting</p>
+            </div>
+            <a href="https://f2c7f522-ef47-48ce-a429-3fc2f15d2011-dev.e1-us-east-azure.choreoapis.dev/chamara/rag-ai-backend-test-vr/v1.0/auth/google/login" 
+               class="inline-flex items-center gap-3 bg-white text-gray-700 border-2 border-gray-300 px-6 py-3 rounded-lg font-semibold hover:border-[#002c53] hover:shadow-lg transition-all duration-200 transform hover:scale-105">
+                <svg class="w-6 h-6" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Sign in with Google
+            </a>
+        </div>
     </div>
 
-    <div id="chatContainer" class="chat-container hidden">
-        <div class="chat-header">
-            <div class="user-info">
-                <img id="userAvatar" class="user-avatar" src="" alt="User">
-                <div class="user-details">
-                    <span id="userName" class="user-name"></span>
-                    <span id="userEmail" class="user-email"></span>
+    <!-- Chat Container -->
+    <div id="chatContainer" class="container mx-auto px-4 py-6 max-w-4xl hidden">
+        <!-- Chat Header with User Info -->
+        <div class="bg-gradient-to-r from-[#002c53] to-[#073763] rounded-t-xl shadow-xl p-4 flex items-center justify-between fade-in">
+            <div class="flex items-center gap-3">
+                <img id="userAvatar" class="w-10 h-10 rounded-full border-2 border-white" src="" alt="User">
+                <div class="text-white">
+                    <div id="userName" class="font-semibold text-sm"></div>
+                    <div id="userEmail" class="text-xs opacity-90"></div>
                 </div>
             </div>
-            <button class="sign-out-btn" onclick="signOut()">Sign Out</button>
+            <button onclick="signOut()" class="px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white rounded-lg font-medium transition-all duration-200 text-sm">
+                Sign Out
+            </button>
         </div>
-        <div id="chatMessages" class="chat-messages">
-            <div class="message bot-message">
-                👋 Hello! I'm your WSO2 AI assistant. How can I help you today?
+        
+        <!-- Title Section -->
+        <div class="bg-white px-6 py-4 border-b border-gray-200">
+            <h1 class="text-2xl font-bold bg-gradient-to-r from-[#002c53] to-[#073763] bg-clip-text text-transparent text-center">
+                WSO2 AI Assistant
+            </h1>
+            <p class="text-gray-600 text-center text-sm mt-1">Ask me anything about WSO2's AI-based products, solutions and video sessions</p>
+        </div>
+        
+        <!-- Chat Container -->
+        <div class="bg-white rounded-b-xl shadow-xl chat-container flex flex-col">
+            <!-- Messages Area -->
+            <div id="chatMessages" class="flex-1 p-6 overflow-y-auto space-y-4">
+                <div class="text-center py-8">
+                    <div class="inline-block p-4 bg-blue-50 rounded-full mb-4">
+                        <svg class="w-8 h-8 text-[#002c53]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                        </svg>
+                    </div>
+                    <p class="text-gray-500">Start a conversation by asking about WSO2's AI products!</p>
+                </div>
             </div>
-        </div>
-        <div class="chat-input">
-            <input type="text" id="messageInput" placeholder="Type your message..." 
-                   onkeypress="if(event.key==='Enter') sendMessage()">
-            <button onclick="sendMessage()">Send</button>
+            
+            <!-- Input Area -->
+            <div class="border-t border-gray-200 p-4">
+                <div class="gradient-border">
+                    <div class="gradient-border-inner p-1">
+                        <div class="flex gap-3">
+                            <input 
+                                type="text" 
+                                id="messageInput" 
+                                placeholder="Ask about WSO2 AI products..." 
+                                class="flex-1 p-3 border-none outline-none text-gray-700 placeholder-gray-400"
+                                onkeypress="if(event.key==='Enter') sendMessage()"
+                            />
+                            <button 
+                                id="sendButton" 
+                                onclick="sendMessage()" 
+                                class="px-6 py-3 bg-gradient-to-r from-[#002c53] to-[#073763] text-white rounded-lg hover:from-[#073763] hover:to-[#002c53] transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#002c53] focus:ring-offset-2"
+                            >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
         const API_BASE_URL = 'https://f2c7f522-ef47-48ce-a429-3fc2f15d2011-dev.e1-us-east-azure.choreoapis.dev/chamara/rag-ai-backend-test-vr/v1.0';
+        let isLoading = false;
+        let isFirstMessage = true;
 
         async function signOut() {
             try {
@@ -245,30 +196,110 @@
                 document.getElementById('chatContainer').classList.add('hidden');
                 document.getElementById('loginContainer').classList.remove('hidden');
                 
-                // Clear chat messages
-                document.getElementById('chatMessages').innerHTML = `
-                    <div class="message bot-message">
-                        👋 Hello! I'm your WSO2 AI assistant. How can I help you today?
+                // Clear chat messages and reset
+                const messagesContainer = document.getElementById('chatMessages');
+                messagesContainer.innerHTML = `
+                    <div class="text-center py-8">
+                        <div class="inline-block p-4 bg-blue-50 rounded-full mb-4">
+                            <svg class="w-8 h-8 text-[#002c53]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                            </svg>
+                        </div>
+                        <p class="text-gray-500">Start a conversation by asking about WSO2's AI products!</p>
                     </div>
                 `;
+                isFirstMessage = true;
             } catch (error) {
                 console.error('Logout error:', error);
             }
         }
 
+        function addMessage(content, isUser = false) {
+            const messagesContainer = document.getElementById('chatMessages');
+            
+            // Clear welcome message on first user message
+            if (isFirstMessage && isUser) {
+                messagesContainer.innerHTML = '';
+                isFirstMessage = false;
+            }
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `fade-in ${isUser ? 'flex justify-end' : 'flex justify-start'}`;
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = `max-w-3xl p-4 rounded-lg ${
+                isUser 
+                    ? 'bg-gradient-to-r from-[#002c53] to-[#073763] text-white ml-12' 
+                    : 'bg-gray-100 text-gray-800 mr-12'
+            }`;
+            
+            if (isUser) {
+                messageContent.textContent = content;
+            } else {
+                messageContent.innerHTML = `<div class="markdown-content">${marked.parse(content)}</div>`;
+            }
+            
+            messageDiv.appendChild(messageContent);
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            return messageDiv;
+        }
+        
+        function addLoadingMessage() {
+            const messagesContainer = document.getElementById('chatMessages');
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'flex justify-start fade-in';
+            loadingDiv.id = 'loadingMessage';
+            
+            loadingDiv.innerHTML = `
+                <div class="max-w-3xl p-4 rounded-lg bg-gray-100 text-gray-800 mr-12">
+                    <div class="flex items-center space-x-2">
+                        <div class="flex space-x-1">
+                            <div class="typing-dot w-2 h-2 bg-[#002c53] rounded-full"></div>
+                            <div class="typing-dot w-2 h-2 bg-[#002c53] rounded-full"></div>
+                            <div class="typing-dot w-2 h-2 bg-[#002c53] rounded-full"></div>
+                        </div>
+                        <span class="text-gray-600">WSO2 AI is thinking...</span>
+                    </div>
+                    <div class="mt-2 text-sm text-gray-500">
+                        Response time may vary
+                    </div>
+                </div>
+            `;
+            
+            messagesContainer.appendChild(loadingDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        function removeLoadingMessage() {
+            const loadingMessage = document.getElementById('loadingMessage');
+            if (loadingMessage) {
+                loadingMessage.remove();
+            }
+        }
+
         async function sendMessage() {
             const input = document.getElementById('messageInput');
+            const sendButton = document.getElementById('sendButton');
             const message = input.value.trim();
             
-            if (!message) return;
+            if (!message || isLoading) return;
+            
+            // Set loading state
+            isLoading = true;
+            input.disabled = true;
+            sendButton.disabled = true;
+            sendButton.innerHTML = `
+                <div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            `;
             
             // Add user message to chat
-            addMessage(message, 'user');
+            addMessage(message, true);
             input.value = '';
             
             // Add loading message
-            const loadingMsg = addMessage('Thinking...', 'bot');
-            loadingMsg.classList.add('loading');
+            addLoadingMessage();
             
             try {
                 const response = await fetch(`${API_BASE_URL}/ask`, {
@@ -292,25 +323,26 @@
                 
                 const data = await response.json();
                 
-                // Replace loading message with actual response
-                loadingMsg.textContent = data.answer;
-                loadingMsg.classList.remove('loading');
+                // Remove loading message and add actual response
+                removeLoadingMessage();
+                addMessage(data.answer);
                 
             } catch (error) {
-                loadingMsg.textContent = '❌ Sorry, there was an error processing your request. Please try again.';
-                loadingMsg.classList.remove('loading');
+                removeLoadingMessage();
+                addMessage('❌ Sorry, there was an error processing your request. Please try again.');
                 console.error('Error:', error);
+            } finally {
+                // Reset loading state
+                isLoading = false;
+                input.disabled = false;
+                sendButton.disabled = false;
+                sendButton.innerHTML = `
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                    </svg>
+                `;
+                input.focus();
             }
-        }
-
-        function addMessage(text, type) {
-            const messagesContainer = document.getElementById('chatMessages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${type}-message`;
-            messageDiv.textContent = text;
-            messagesContainer.appendChild(messageDiv);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            return messageDiv;
         }
 
         // Check if user is already logged in on page load
@@ -327,6 +359,11 @@
                     document.getElementById('userAvatar').src = user.picture;
                     document.getElementById('loginContainer').classList.add('hidden');
                     document.getElementById('chatContainer').classList.remove('hidden');
+                    
+                    // Focus input after successful login
+                    setTimeout(() => {
+                        document.getElementById('messageInput').focus();
+                    }, 100);
                 }
             } catch (error) {
                 // User not logged in, stay on login page
