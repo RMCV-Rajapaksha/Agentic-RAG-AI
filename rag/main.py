@@ -3,7 +3,6 @@ import json
 from fastapi import FastAPI, Depends, HTTPException, status, Cookie, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel
 from config.config import get_config
 from src.agent.agent import run_agent_async
@@ -50,57 +49,22 @@ if not IS_PRODUCTION:
 # --- FastAPI App Initialization ---
 app = FastAPI(title="Agentic RAG API", description="FastAPI server for Agentic RAG system", version="1.0.0")
 
-# --- Custom CORS Middleware for Dynamic Origins ---
-from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
+# --- CORS Middleware ---
+FRONTEND_URLS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    config.redirect_frontend_uri,
+    "https://sites.google.com",  # Allow Google Sites
+]
 
-class DynamicCORSMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        origin = request.headers.get("origin")
-        
-        # List of allowed origin patterns
-        allowed_patterns = [
-            "http://localhost",
-            "http://127.0.0.1",
-            "https://sites.google.com",
-            "https://googleusercontent.com",  # Google embeds
-            config.redirect_frontend_uri
-        ]
-        
-        # Check if origin matches any allowed pattern
-        is_allowed = False
-        if origin:
-            for pattern in allowed_patterns:
-                if pattern in origin:
-                    is_allowed = True
-                    break
-        
-        # Handle preflight OPTIONS request
-        if request.method == "OPTIONS":
-            response = Response()
-            if is_allowed and origin:
-                response.headers["Access-Control-Allow-Origin"] = origin
-                response.headers["Access-Control-Allow-Credentials"] = "true"
-                response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-                response.headers["Access-Control-Allow-Headers"] = "*"
-                response.headers["Access-Control-Max-Age"] = "3600"
-            return response
-        
-        # Process actual request
-        response = await call_next(request)
-        
-        # Add CORS headers to response
-        if is_allowed and origin:
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-            response.headers["Access-Control-Expose-Headers"] = "*"
-        
-        return response
-
-# Add custom CORS middleware
-app.add_middleware(DynamicCORSMiddleware)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,  # CRITICAL: Must be True for cookies
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"]
+)
 
 # --- Session Management ---
 sessions = {}
