@@ -55,15 +55,23 @@ FRONTEND_URLS = [
     "http://127.0.0.1:3000",
     config.redirect_frontend_uri,
     "https://sites.google.com",  # Allow Google Sites
+    "https://552891955-atari-embeds.googleusercontent.com",  # Google embeds
+]
+
+# Add wildcard patterns for Google's dynamic domains
+ALLOWED_ORIGINS_REGEX = [
+    r"https://.*\.googleusercontent\.com",  # All Google user content domains
+    r"https://.*\.google\.com",  # All Google domains
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Must be specific origins when using credentials
+    allow_origin_regex="|".join(ALLOWED_ORIGINS_REGEX),  # Dynamic Google domains
     allow_credentials=True,  # CRITICAL: Must be True for cookies
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"]
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "Cookie", "Set-Cookie"],
+    expose_headers=["Set-Cookie"]
 )
 
 # --- Session Management ---
