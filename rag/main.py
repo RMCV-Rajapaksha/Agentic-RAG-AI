@@ -1,6 +1,6 @@
 import asyncio
 import json
-from fastapi import FastAPI, Depends, HTTPException, status, Cookie, Request, Header
+from fastapi import FastAPI, Depends, HTTPException, status, Cookie, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, JSONResponse
 from pydantic import BaseModel
@@ -53,13 +53,14 @@ app = FastAPI(title="Agentic RAG API", description="FastAPI server for Agentic R
 FRONTEND_URLS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    config.redirect_frontend_uri
+    config.redirect_frontend_uri,
+    "https://sites.google.com",  # Allow Google Sites
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=FRONTEND_URLS if IS_PRODUCTION else ["*"],
-    allow_credentials=True,
+    allow_credentials=True,  # CRITICAL: Must be True for cookies
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"]
@@ -75,43 +76,19 @@ class Session:
         self.created_at = datetime.now()
         self.expires_at = datetime.now() + timedelta(hours=24)
 
-def get_session_from_token(token: str) -> Optional[dict]:
-    """Get session from token and validate expiry."""
-    if not token or token not in sessions:
+def get_session_from_cookie(session_token: Optional[str] = Cookie(None)) -> Optional[dict]:
+    """Get session from cookie and validate expiry."""
+    if not session_token or session_token not in sessions:
         return None
     
-    session = sessions[token]
+    session = sessions[session_token]
     
     if datetime.now() > session.expires_at:
-        print(f"⏰ Session expired: {token[:10]}...")
-        del sessions[token]
+        print(f"⏰ Session expired: {session_token[:10]}...")
+        del sessions[session_token]
         return None
     
     return session.user_info
-
-def get_session_from_request(
-    authorization: Optional[str] = Header(None)
-) -> Optional[dict]:
-    """Extract session from Authorization header (Bearer token)."""
-    if not authorization:
-        print("❌ No Authorization header found")
-        return None
-    
-    if not authorization.startswith("Bearer "):
-        print("❌ Invalid Authorization header format")
-        return None
-    
-    token = authorization.replace("Bearer ", "")
-    print(f"🔑 Checking session token: {token[:10]}...")
-    
-    user_info = get_session_from_token(token)
-    
-    if user_info:
-        print(f"✅ Valid session found for user: {user_info.get('email')}")
-    else:
-        print(f"❌ Session not found or expired")
-    
-    return user_info
 
 # --- Pydantic Models ---
 class QueryRequest(BaseModel):
@@ -157,7 +134,7 @@ async def google_login():
             value=state, 
             httponly=True, 
             max_age=600,
-            samesite="lax",
+            samesite="none",  # Changed for cross-site cookies
             secure=IS_PRODUCTION
         )
         return response
@@ -172,7 +149,7 @@ async def google_callback(
     state: str = None, 
     oauth_state: str = Cookie(None)
 ):
-    """Google OAuth callback to handle user authentication."""
+    """Google OAuth callback - sets session cookie instead of URL redirect."""
     print(f"📥 Callback received - Code: {code[:20] if code else None}..., State: {state}, Cookie State: {oauth_state}")
     
     error = request.query_params.get('error')
@@ -225,12 +202,24 @@ async def google_callback(
         print(f"🎫 Session created: {session.session_id[:10]}...")
         print(f"📊 Total active sessions: {len(sessions)}")
         
-        # Redirect to frontend with session token in URL
-        frontend_url = f"{config.redirect_frontend_uri}?session={session.session_id}"
-        response = RedirectResponse(url=frontend_url)
+        # Redirect to frontend WITHOUT session in URL
+        response = RedirectResponse(url=config.redirect_frontend_uri)
+        
+        # Set session cookie
+        response.set_cookie(
+            key="session_token",
+            value=session.session_id,
+            httponly=True,  # Prevents JavaScript access (more secure)
+            max_age=86400,  # 24 hours
+            samesite="none",  # Required for cross-site (Google Sites -> your backend)
+            secure=IS_PRODUCTION,  # HTTPS only in production
+            domain=None  # Let browser decide
+        )
         
         # Clear the oauth_state cookie
         response.delete_cookie("oauth_state")
+        
+        print(f"🍪 Session cookie set for user: {id_info.get('email')}")
         
         return response
         
@@ -242,24 +231,25 @@ async def google_callback(
         return RedirectResponse(url=error_url)
 
 @app.post("/auth/logout")
-async def logout(authorization: Optional[str] = Header(None)):
-    """Logout - clear session."""
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization.replace("Bearer ", "")
-        if token in sessions:
-            del sessions[token]
-            print(f"🚪 Session {token[:10]}... deleted")
-            print(f"📊 Remaining active sessions: {len(sessions)}")
+async def logout(response: Response, session_token: Optional[str] = Cookie(None)):
+    """Logout - clear session and cookie."""
+    if session_token and session_token in sessions:
+        del sessions[session_token]
+        print(f"🚪 Session {session_token[:10]}... deleted")
+        print(f"📊 Remaining active sessions: {len(sessions)}")
+    
+    # Clear the session cookie
+    response.delete_cookie("session_token", samesite="none", secure=IS_PRODUCTION)
     
     return {"success": True, "message": "Logged out successfully"}
 
 @app.get("/auth/me")
-async def get_current_user(authorization: Optional[str] = Header(None)):
+async def get_current_user(session_token: Optional[str] = Cookie(None)):
     """Get current user info if authenticated."""
     
-    print(f"🔍 Checking authentication - Auth Header: {bool(authorization)}")
+    print(f"🔍 Checking authentication - Cookie present: {bool(session_token)}")
     
-    user_info = get_session_from_request(authorization)
+    user_info = get_session_from_cookie(session_token)
     
     if not user_info:
         raise HTTPException(
@@ -267,16 +257,17 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
             detail="Not authenticated"
         )
     
+    print(f"✅ Valid session found for user: {user_info.get('email')}")
     return user_info
 
 @app.post("/ask", response_model=QueryResponse)
 async def ask_agent(
     request: QueryRequest,
-    authorization: Optional[str] = Header(None)
+    session_token: Optional[str] = Cookie(None)
 ):
     """Protected endpoint to interact with the agent."""
     
-    user_info = get_session_from_request(authorization)
+    user_info = get_session_from_cookie(session_token)
     
     if not user_info:
         raise HTTPException(
