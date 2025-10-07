@@ -16,9 +16,11 @@ info:
     6. Call `/auth/logout` to end session
     
     ### CORS Configuration
-    - Supports cross-origin requests from configured frontend URLs
-    - Credentials (cookies) are enabled
-    - Supports Google Sites and Google user content domains
+    - Supports cross-origin requests with wildcard origins (allow_origins=["*"])
+    - Supports Google's dynamic domains via regex patterns (*.googleusercontent.com, *.google.com)
+    - Credentials (cookies) are enabled for authentication
+    - Supports multiple HTTP methods and headers
+    - Session cookies use SameSite=none for cross-site compatibility
   version: "1.0.0"
   contact:
     name: API Support
@@ -47,10 +49,10 @@ paths:
           description: Redirect to Google OAuth authorization page
           headers:
             Set-Cookie:
-              description: OAuth state cookie for CSRF protection
+              description: OAuth state cookie for CSRF protection (SameSite=none, HttpOnly)
               schema:
                 type: string
-                example: oauth_state=random_state_value; HttpOnly; Max-Age=600; SameSite=none
+                example: oauth_state=random_state_value; HttpOnly; Max-Age=600; SameSite=none; Secure (if production)
             Location:
               description: Google OAuth authorization URL
               schema:
@@ -104,10 +106,10 @@ paths:
           description: Redirect back to frontend with session cookie set
           headers:
             Set-Cookie:
-              description: Session cookie containing authentication token
+              description: Session cookie containing authentication token (HttpOnly, SameSite=none, 24h expiry)
               schema:
                 type: string
-                example: session_token=secure_token; HttpOnly; Max-Age=86400; SameSite=none; Secure
+                example: session_token=secure_token; HttpOnly; Max-Age=86400; SameSite=none; Secure (if production)
             Location:
               description: Frontend URL
               schema:
@@ -146,10 +148,10 @@ paths:
           description: Logout successful
           headers:
             Set-Cookie:
-              description: Deleted session cookie
+              description: Deleted session cookie (SameSite=none for cross-site compatibility)
               schema:
                 type: string
-                example: session_token=; Max-Age=0
+                example: session_token=; Max-Age=0; SameSite=none; Secure (if production)
           content:
             application/json:
               schema:
@@ -246,7 +248,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /:
+  /health:
     get:
       summary: Health check endpoint
       description: |
@@ -262,25 +264,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthCheckResponse"
-
-  /debug/sessions:
-    get:
-      summary: Debug endpoint for active sessions
-      description: |
-        Returns information about active sessions.
-        Only available in development mode (disabled in production).
-      operationId: debug_sessions
-      tags:
-        - Debug
-      responses:
-        "200":
-          description: Session information (development) or disabled message (production)
-          content:
-            application/json:
-              schema:
-                oneOf:
-                  - $ref: "#/components/schemas/DebugSessionsResponse"
-                  - $ref: "#/components/schemas/DebugDisabledResponse"
 
 components:
   securitySchemes:
@@ -378,52 +361,6 @@ components:
         - message
         - active_sessions
 
-    DebugSessionsResponse:
-      type: object
-      properties:
-        active_sessions:
-          type: integer
-          description: Total number of active sessions
-          example: 3
-        sessions:
-          type: array
-          description: List of active session details
-          items:
-            type: object
-            properties:
-              id:
-                type: string
-                description: Truncated session ID (first 10 chars + ...)
-                example: "xY9kL2mP7q..."
-              email:
-                type: string
-                format: email
-                description: Email of authenticated user
-                example: "user@example.com"
-              created_at:
-                type: string
-                format: date-time
-                description: Session creation timestamp (ISO 8601)
-                example: "2025-10-07T10:30:00.123456"
-              expires_at:
-                type: string
-                format: date-time
-                description: Session expiry timestamp (ISO 8601)
-                example: "2025-10-08T10:30:00.123456"
-      required:
-        - active_sessions
-        - sessions
-
-    DebugDisabledResponse:
-      type: object
-      properties:
-        message:
-          type: string
-          description: Message indicating debug endpoint is disabled
-          example: "Debug endpoint disabled in production"
-      required:
-        - message
-
     ErrorResponse:
       type: object
       properties:
@@ -445,5 +382,3 @@ tags:
       Requires authentication.
   - name: System
     description: Health check and system status endpoints
-  - name: Debug
-    description: Debug and development endpoints (disabled in production)

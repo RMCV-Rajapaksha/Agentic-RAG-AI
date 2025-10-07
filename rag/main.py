@@ -294,7 +294,7 @@ async def ask_agent(
         print(f"Error in ask_agent: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
 
-@app.get("/")
+@app.get("/health")
 def health_check():
     """Health check endpoint."""
     return {
