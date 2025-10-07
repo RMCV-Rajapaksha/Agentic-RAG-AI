@@ -75,40 +75,9 @@ class Session:
         self.created_at = datetime.now()
         self.expires_at = datetime.now() + timedelta(hours=24)
 
-def get_session_from_request(
-    session_id: Optional[str] = Cookie(None),
-    authorization: Optional[str] = Header(None),
-    x_session_token: Optional[str] = Header(None)
-) -> Optional[dict]:
-    """
-    Extract session from multiple sources:
-    1. Cookie (session_id)
-    2. Authorization header (Bearer token)
-    3. X-Session-Token header
-    """
-    token = None
-    
-    # Try cookie first
-    if session_id:
-        token = session_id
-        print(f"🍪 Using session from cookie: {token[:10]}...")
-    
-    # Try Authorization header
-    elif authorization and authorization.startswith("Bearer "):
-        token = authorization.replace("Bearer ", "")
-        print(f"🔑 Using session from Authorization header: {token[:10]}...")
-    
-    # Try custom header
-    elif x_session_token:
-        token = x_session_token
-        print(f"📋 Using session from X-Session-Token header: {token[:10]}...")
-    
-    if not token:
-        print("❌ No session token found in request")
-        return None
-    
-    if token not in sessions:
-        print(f"❌ Session token not found in sessions store: {token[:10]}...")
+def get_session_from_token(token: str) -> Optional[dict]:
+    """Get session from token and validate expiry."""
+    if not token or token not in sessions:
         return None
     
     session = sessions[token]
@@ -118,8 +87,31 @@ def get_session_from_request(
         del sessions[token]
         return None
     
-    print(f"✅ Valid session found for user: {session.user_info.get('email')}")
     return session.user_info
+
+def get_session_from_request(
+    authorization: Optional[str] = Header(None)
+) -> Optional[dict]:
+    """Extract session from Authorization header (Bearer token)."""
+    if not authorization:
+        print("❌ No Authorization header found")
+        return None
+    
+    if not authorization.startswith("Bearer "):
+        print("❌ Invalid Authorization header format")
+        return None
+    
+    token = authorization.replace("Bearer ", "")
+    print(f"🔑 Checking session token: {token[:10]}...")
+    
+    user_info = get_session_from_token(token)
+    
+    if user_info:
+        print(f"✅ Valid session found for user: {user_info.get('email')}")
+    else:
+        print(f"❌ Session not found or expired")
+    
+    return user_info
 
 # --- Pydantic Models ---
 class QueryRequest(BaseModel):
@@ -158,6 +150,7 @@ async def google_login():
         print(f"🔐 Generated auth URL: {authorization_url}")
         print(f"📝 State: {state}")
         
+        # Store state in a cookie for CSRF protection
         response = RedirectResponse(url=authorization_url)
         response.set_cookie(
             key="oauth_state", 
@@ -165,8 +158,7 @@ async def google_login():
             httponly=True, 
             max_age=600,
             samesite="lax",
-            secure=IS_PRODUCTION,
-            path="/"  # Explicitly set path
+            secure=IS_PRODUCTION
         )
         return response
     except Exception as e:
@@ -221,6 +213,7 @@ async def google_callback(
         
         print(f"👤 User authenticated: {id_info.get('email')}")
         
+        # Create session
         session = Session({
             'email': id_info.get('email'),
             'name': id_info.get('name'),
@@ -229,24 +222,15 @@ async def google_callback(
         })
         sessions[session.session_id] = session
         
-        print(f"🎫 Session created: {session.session_id}")
+        print(f"🎫 Session created: {session.session_id[:10]}...")
         print(f"📊 Total active sessions: {len(sessions)}")
         
-        # Return session token in URL - frontend will handle storage
+        # Redirect to frontend with session token in URL
         frontend_url = f"{config.redirect_frontend_uri}?session={session.session_id}"
         response = RedirectResponse(url=frontend_url)
         
-        # Still try to set cookie as backup
-        response.set_cookie(
-            key="session_id",
-            value=session.session_id,
-            httponly=True,
-            secure=IS_PRODUCTION,
-            samesite="lax",
-            max_age=86400,
-            path="/"  # Explicitly set path
-        )
-        response.delete_cookie("oauth_state", path="/")
+        # Clear the oauth_state cookie
+        response.delete_cookie("oauth_state")
         
         return response
         
@@ -258,41 +242,24 @@ async def google_callback(
         return RedirectResponse(url=error_url)
 
 @app.post("/auth/logout")
-async def logout(
-    session_id: Optional[str] = Cookie(None),
-    authorization: Optional[str] = Header(None),
-    x_session_token: Optional[str] = Header(None)
-):
-    """Logout - clear session and cookie."""
-    # Find session token from any source
-    token = None
-    if session_id:
-        token = session_id
-    elif authorization and authorization.startswith("Bearer "):
+async def logout(authorization: Optional[str] = Header(None)):
+    """Logout - clear session."""
+    if authorization and authorization.startswith("Bearer "):
         token = authorization.replace("Bearer ", "")
-    elif x_session_token:
-        token = x_session_token
+        if token in sessions:
+            del sessions[token]
+            print(f"🚪 Session {token[:10]}... deleted")
+            print(f"📊 Remaining active sessions: {len(sessions)}")
     
-    if token and token in sessions:
-        del sessions[token]
-        print(f"🚪 Session {token[:10]}... deleted")
-    
-    response = JSONResponse({"success": True, "message": "Logged out successfully"})
-    response.delete_cookie("session_id", path="/")
-    return response
+    return {"success": True, "message": "Logged out successfully"}
 
 @app.get("/auth/me")
-async def get_current_user(
-    session_id: Optional[str] = Cookie(None),
-    authorization: Optional[str] = Header(None),
-    x_session_token: Optional[str] = Header(None)
-):
-    """Get current user info if authenticated.
-    Supports cookie, Authorization header, and X-Session-Token header."""
+async def get_current_user(authorization: Optional[str] = Header(None)):
+    """Get current user info if authenticated."""
     
-    print(f"🔍 Checking authentication - Cookie: {bool(session_id)}, Auth Header: {bool(authorization)}, X-Session-Token: {bool(x_session_token)}")
+    print(f"🔍 Checking authentication - Auth Header: {bool(authorization)}")
     
-    user_info = get_session_from_request(session_id, authorization, x_session_token)
+    user_info = get_session_from_request(authorization)
     
     if not user_info:
         raise HTTPException(
@@ -305,14 +272,11 @@ async def get_current_user(
 @app.post("/ask", response_model=QueryResponse)
 async def ask_agent(
     request: QueryRequest,
-    session_id: Optional[str] = Cookie(None),
-    authorization: Optional[str] = Header(None),
-    x_session_token: Optional[str] = Header(None)
+    authorization: Optional[str] = Header(None)
 ):
-    """Protected endpoint to interact with the agent.
-    Supports cookie, Authorization header, and X-Session-Token header."""
+    """Protected endpoint to interact with the agent."""
     
-    user_info = get_session_from_request(session_id, authorization, x_session_token)
+    user_info = get_session_from_request(authorization)
     
     if not user_info:
         raise HTTPException(
@@ -323,10 +287,13 @@ async def ask_agent(
     print(f"💬 Query from user: {user_info.get('email', 'Unknown')} - {user_info.get('name', 'Unknown')}")
     print(f"❓ Query: {request.query}")
     
-    response_data = await run_agent_async(request.query)
-    answer = response_data.answer if hasattr(response_data, 'answer') else str(response_data)
-    
-    return {"answer": answer}
+    try:
+        response_data = await run_agent_async(request.query)
+        answer = response_data.answer if hasattr(response_data, 'answer') else str(response_data)
+        return {"answer": answer}
+    except Exception as e:
+        print(f"❌ Error in ask_agent: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
 
 @app.get("/")
 def health_check():
@@ -347,6 +314,7 @@ async def debug_sessions():
                 {
                     "id": sid[:10] + "...",
                     "email": s.user_info.get('email'),
+                    "created_at": s.created_at.isoformat(),
                     "expires_at": s.expires_at.isoformat()
                 }
                 for sid, s in sessions.items()
