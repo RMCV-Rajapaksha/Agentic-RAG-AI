@@ -58,7 +58,7 @@ FRONTEND_URLS = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=FRONTEND_URLS if IS_PRODUCTION else ["*"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
