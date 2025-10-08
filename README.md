@@ -24,7 +24,7 @@ The system consists of four main components:
   - Vector search capabilities
   - CORS-enabled for web frontend
 
-### 3. **Web Frontend** (`ask-wiz-79/`)
+### 3. **Web Frontend** (`rag_test_frontend/`)
 - **Purpose**: React-based user interface
 - **Tech Stack**: React + TypeScript + Vite + Tailwind CSS + shadcn/ui
 - **Features**:
