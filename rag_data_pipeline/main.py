@@ -22,6 +22,8 @@ import pypandoc
 import pdfplumber
 from docx import Document as DocxDocument
 from markdownify import markdownify as md
+import requests
+import re
 
 
 
@@ -218,16 +220,26 @@ def main():
         "https://wso2.com/internal-developer-platform/ai/"
     ]
 
-    urls_to_videos = [
-     "https://www.youtube.com/watch?v=X5eC3Rk9FBQ",
-     "https://www.youtube.com/watch?v=-nwIoiPB8CE",
-     "https://www.youtube.com/watch?v=GoYR-iK2UUk",
-     "https://www.youtube.com/watch?v=CYii_zExySA",
-     "https://www.youtube.com/watch?v=banNxyyTSI4",
-     "https://www.youtube.com/watch?v=wobNffok7nc",
-     "https://www.youtube.com/watch?v=bTj0h5x8W70"
+    # Fetch YouTube URLs from GitHub markdown file
+    
+    github_md_url = "https://raw.githubusercontent.com/RMCV-Rajapaksha/Agentic-RAG-AI/main/YouTubeURL.md"
+    
+    try:
+        response = requests.get(github_md_url)
+        response.raise_for_status()
+        md_content = response.text
+        
+        # Extract YouTube URLs using regex
+        youtube_url_pattern = r'https://www\.youtube\.com/watch\?v=[\w-]+'
+        urls_to_videos = re.findall(youtube_url_pattern, md_content)
+        
+        print(f"Found {len(urls_to_videos)} YouTube URLs from markdown file")
+    except Exception as e:
+        print(f"Error fetching URLs from markdown: {e}")
+        urls_to_videos = []
+    
+    print(f"YouTube URLs to process: {urls_to_videos}")
 
-    ]
 
     config = get_config()
     drive_folder_id = config.google_drive_folder_id
