@@ -959,6 +959,21 @@ wheels = [
 ]
 
 [[package]]
+name = "llama-index-llms-azure-openai"
+version = "0.4.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "azure-identity" },
+    { name = "httpx" },
+    { name = "llama-index-core" },
+    { name = "llama-index-llms-openai" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/bc/3d/870ab1bc1c97253f64ba635f5d140286da1e6e0b471171392eedb28ae604/llama_index_llms_azure_openai-0.4.2.tar.gz", hash = "sha256:e8e5e42bc53d598c3e8853c9417b87db0d0b83bd14c3eccf13368e7592bdfc8c", size = 7057, upload-time = "2025-09-25T15:49:49.974Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d9/fd/2841f980ccfa2173bee4e5a59d447eec6c63c22b70da53f7390dc661387d/llama_index_llms_azure_openai-0.4.2-py3-none-any.whl", hash = "sha256:a3ca073df8c45f51c8b683fe98b5a622c7f6f25d71813fdafaac2779efd136a0", size = 7261, upload-time = "2025-09-25T15:49:49.183Z" },
+]
+
+[[package]]
 name = "llama-index-llms-openai"
 version = "0.6.6"
 source = { registry = "https://pypi.org/simple" }
@@ -1759,7 +1774,9 @@ dependencies = [
     { name = "llama-index" },
     { name = "llama-index-embeddings-azure-inference" },
     { name = "llama-index-llms-azure-inference" },
+    { name = "llama-index-llms-azure-openai" },
     { name = "llama-index-vector-stores-postgres" },
+    { name = "openai" },
     { name = "pip" },
     { name = "pydantic" },
     { name = "python-dotenv" },
@@ -1777,7 +1794,9 @@ requires-dist = [
     { name = "llama-index", specifier = ">=0.14.0" },
     { name = "llama-index-embeddings-azure-inference", specifier = ">=0.4.1" },
     { name = "llama-index-llms-azure-inference", specifier = ">=0.5.1" },
+    { name = "llama-index-llms-azure-openai", specifier = ">=0.4.2" },
     { name = "llama-index-vector-stores-postgres", specifier = ">=0.6.6" },
+    { name = "openai", specifier = ">=1.109.1" },
     { name = "pip", specifier = ">=25.3" },
     { name = "pydantic", specifier = ">=2.11.7" },
     { name = "python-dotenv", specifier = ">=1.1.1" },

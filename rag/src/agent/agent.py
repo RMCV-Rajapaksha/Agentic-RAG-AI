@@ -10,6 +10,7 @@ from llama_index.core.agent.workflow import FunctionAgent
 from llama_index.core.tools import FunctionTool
 from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.llms.azure_inference import AzureAICompletionsModel
+from azure.core.credentials import AzureKeyCredential
 
 
 
@@ -38,9 +39,9 @@ async def run_agent_async(query: str) -> KnowledgeResponse:
     
     llm = AzureAICompletionsModel(
     endpoint=azure_endpoint,
-    credential=azure_credential,
+    credential=AzureKeyCredential(azure_credential),
     model_name="gpt-4o"
-    )
+)
     custom_system_prompt = """
                             You are the "WSO2 Knowledge Assistant", a specialized AI expert on WSO2 products and technologies. Your sole purpose is to provide accurate and helpful answers based *exclusively* on the information retrieved from the internal WSO2 knowledge base.
 
