@@ -25,23 +25,19 @@ class KnowledgeResponse(BaseModel):
 async def run_agent_async(query: str) -> KnowledgeResponse:
     """Sets up and runs the agent asynchronously using FunctionAgent."""
     
-    api_key = config.openai_api_key
-    azure_endpoint = config.azure_inference_endpoint
-    azure_credential = config.azure_inference_credential
-
-    if not azure_credential:
-        raise ValueError("The Azure credential is not set in config.")
-    
-    print(f"Azure Endpoint: {azure_endpoint}")
-    print(f"Model: gpt-4o")
+    model=config.azure_openai_model
+    deployment_name=config.azure_openai_deployment_name
+    azure_credential=config.azure_openai_api_key
+    azure_endpoint=config.azure_openai_endpoint
+    api_version=config.azure_openai_api_version
     
     # Use AzureOpenAI instead of AzureAICompletionsModel
     llm = AzureOpenAI(
-        model="gpt-4o",
-        deployment_name="gpt-4o",
+        model=model,
+        deployment_name=deployment_name,
         api_key=azure_credential,
-        azure_endpoint="https://ai-internal-website-prod.cognitiveservices.azure.com/",
-        api_version="2024-12-01-preview"
+        azure_endpoint=azure_endpoint,
+        api_version=api_version
     )
     
     # Test the LLM directly

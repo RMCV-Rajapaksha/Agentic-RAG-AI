@@ -21,11 +21,15 @@ class Config:
             
             self._openai_api_key = self._get_required_env('OPENAI_API_KEY')
             self._db_name = self._get_required_env('DB_NAME')
-            self._azure_inference_endpoint = self._get_required_env('AZURE_INFERENCE_ENDPOINT')
-            self._azure_inference_credential = self._get_required_env('AZURE_INFERENCE_CREDENTIAL')
+            self.azure_openai_model = self.get_env_var('AZURE_OPENAI_MODEL', 'gpt-4o')
+            self.azure_openai_deployment_name = self.get_env_var('AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4o')
+            self.azure_openai_api_key = self._get_required_env('AZURE_OPENAI_API_KEY')
+            self.azure_openai_endpoint = self._get_required_env('AZURE_OPENAI_ENDPOINT')
+            self.azure_openai_api_version = self.get_env_var('AZURE_OPENAI_API_VERSION', '2024-12-01-preview')
 
-            self._google_client_id = self._get_required_env('GOOGLE_CLIENT_ID')    
-            self._google_client_secret = self._get_required_env('GOOGLE_CLIENT_SECRET')       
+
+            self._google_client_id = self._get_required_env('GOOGLE_CLIENT_ID')
+            self._google_client_secret = self._get_required_env('GOOGLE_CLIENT_SECRET')
             self._redirect_uri = self._get_required_env('REDIRECT_URI')
             self._redirect_frontend_uri = self.get_env_var('REDIRECT_FRONTEND_URI')
 
@@ -82,13 +86,7 @@ class Config:
     def db_name(self) -> str:
         return self._db_name
     
-    @property
-    def azure_inference_endpoint(self) -> str:
-        return self._azure_inference_endpoint
-
-    @property
-    def azure_inference_credential(self) -> str:
-        return self._azure_inference_credential
+    
 
     # General getter for any env variable
     def get_env_var(self, key: str, default: Optional[str] = None) -> Optional[str]:
