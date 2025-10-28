@@ -5,18 +5,13 @@ from typing import List, Optional
 from dotenv import load_dotenv
 from pydantic import BaseModel ,Field 
 
-from llama_index.llms.openai import OpenAI
+from llama_index.llms.azure_openai import AzureOpenAI  # Changed this import
 from llama_index.core.agent.workflow import FunctionAgent  
 from llama_index.core.tools import FunctionTool
 from llama_index.core.memory import ChatMemoryBuffer
-from llama_index.llms.azure_inference import AzureAICompletionsModel
-from azure.core.credentials import AzureKeyCredential
-
-
 
 from config.config import get_config
 from .tools.get_similar_text_chunk import get_chunks_tool
-
 
 load_dotenv()
 config = get_config()
@@ -34,14 +29,36 @@ async def run_agent_async(query: str) -> KnowledgeResponse:
     azure_endpoint = config.azure_inference_endpoint
     azure_credential = config.azure_inference_credential
 
-    if not api_key:
-        raise ValueError("The OPENAI_API_KEY is not set in config.")
+    if not azure_credential:
+        raise ValueError("The Azure credential is not set in config.")
     
-    llm = AzureAICompletionsModel(
-    endpoint=azure_endpoint,
-    credential=AzureKeyCredential(azure_credential),
-    model_name="gpt-4o"
-)
+    print(f"Azure Endpoint: {azure_endpoint}")
+    print(f"Model: gpt-4o")
+    
+    # Use AzureOpenAI instead of AzureAICompletionsModel
+    llm = AzureOpenAI(
+        model="gpt-4o",
+        deployment_name="gpt-4o",
+        api_key=azure_credential,
+        azure_endpoint="https://ai-internal-website-prod.cognitiveservices.azure.com/",
+        api_version="2024-12-01-preview"
+    )
+    
+    # Test the LLM directly
+    print("\n=== Testing LLM Connection ===")
+    try:
+        from llama_index.core.llms import ChatMessage
+        test_messages = [ChatMessage(role="user", content="Hello")]
+        test_response = llm.chat(test_messages)
+        print(f"✓ LLM test successful: {test_response}")
+    except Exception as e:
+        print(f"✗ LLM test failed: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return KnowledgeResponse(
+            answer=f"LLM connection failed: {type(e).__name__}: {str(e)}"
+        )
+    
     custom_system_prompt = """
                             You are the "WSO2 Knowledge Assistant", a specialized AI expert on WSO2 products and technologies. Your sole purpose is to provide accurate and helpful answers based *exclusively* on the information retrieved from the internal WSO2 knowledge base.
 
@@ -57,7 +74,7 @@ async def run_agent_async(query: str) -> KnowledgeResponse:
 
                                5. **Concise and Relevant Answers:** Synthesize the information from the retrieved chunks into a clear, concise, and helpful answer. Directly address the user's question without adding extraneous details or opinions.
 
-                               6. **URL Inclusion:** If the retrieved chunk(s) contain any URL(s), you MUST include those URL(s) in your output answer to guide the user to the original reference.If a chunk you use contains a URL, you must include that URL in your answer.Only include the URL if the chunk is actually used in your response.If you reference any part of the chunk in your answer, you need to cite the URL as a reference.If a chunk has a URL but you don’t use it, you don’t include the URL.
+                               6. **URL Inclusion:** If the retrieved chunk(s) contain any URL(s), you MUST include those URL(s) in your output answer to guide the user to the original reference.If a chunk you use contains a URL, you must include that URL in your answer.Only include the URL if the chunk is actually used in your response.If you reference any part of the chunk in your answer, you need to cite the URL as a reference.If a chunk has a URL but you don't use it, you don't include the URL.
 
                                **Formatting Requirements:**
                                Your response MUST be formatted using proper markdown syntax:
@@ -81,68 +98,80 @@ async def run_agent_async(query: str) -> KnowledgeResponse:
                                
                     """
 
-
- 
-
     tools = [
         get_chunks_tool 
     ]
 
     memory = ChatMemoryBuffer.from_defaults(token_limit=3900)
 
-
-    agent = FunctionAgent(
-        tools=tools,
-        llm=llm,
-        memory= memory,
-        system_prompt=custom_system_prompt,
-        output_cls=KnowledgeResponse  
-    )
-
-    
+    print("\n=== Creating Agent ===")
+    try:
+        agent = FunctionAgent(
+            tools=tools,
+            llm=llm,
+            memory=memory,
+            system_prompt=custom_system_prompt,
+            output_cls=KnowledgeResponse  
+        )
+        print("✓ Agent created successfully")
+    except Exception as e:
+        print(f"✗ Error creating agent: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return KnowledgeResponse(
+            answer=f"Failed to initialize the assistant: {type(e).__name__}: {str(e)}"
+        )
 
     max_retries = 3
     
     for attempt in range(max_retries):
         try:
+            print(f"\n=== Attempt {attempt + 1} of {max_retries} ===")
+            print(f"Running agent with query: {query}")
             response = await asyncio.wait_for(
                 agent.run(user_msg=query), 
                 timeout=300
             )
-            
+            print(f"✓ Agent run successful")
+            print(f"Response type: {type(response)}")
             break
             
         except (ConnectionError, TimeoutError) as e:
+            print(f"✗ Connection/Timeout error on attempt {attempt + 1}: {str(e)}")
             if attempt < max_retries - 1:
-                wait_time = 2 ** attempt  # Exponential backoff
-                
+                wait_time = 2 ** attempt
+                print(f"Retrying in {wait_time} seconds...")
                 await asyncio.sleep(wait_time)
                 continue
             else:
-               
+                print("✗ Max retries reached for connection/timeout errors")
                 return KnowledgeResponse(
                     answer="I'm having trouble processing your request after multiple attempts. Please try again later."
                 )
         except Exception as e:
-            # Don't retry for non-transient errors
-            
+            print(f"✗ Error during agent execution: {type(e).__name__}: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return KnowledgeResponse(
-                answer="I encountered an error while processing your request. Please try again or contact support."
+                answer=f"I encountered an error while processing your request: {type(e).__name__}: {str(e)}. Please try again or contact support."
             )
     
-    
-
-  
+    # Parse response
+    print("\n=== Parsing Response ===")
     if hasattr(response, "structured_response") and isinstance(response.structured_response, KnowledgeResponse):
+        print("✓ Found structured_response attribute")
         result = response.structured_response
     else:
-        
+        print("⚠ No structured_response found, attempting to parse")
         try:
             parsed = KnowledgeResponse.parse_raw(str(response))
             result = parsed
-        except Exception:
-          
+            print("✓ Successfully parsed response")
+        except Exception as e:
+            print(f"⚠ Could not parse structured response: {str(e)}")
             response_text = str(response)
             result = KnowledgeResponse(answer=response_text)
 
+    print(f"\n=== Final Result ===")
+    print(f"Answer length: {len(result.answer)}")
     return result
