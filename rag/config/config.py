@@ -21,6 +21,8 @@ class Config:
             
             self._openai_api_key = self._get_required_env('OPENAI_API_KEY')
             self._db_name = self._get_required_env('DB_NAME')
+            self._azure_inference_endpoint = self._get_required_env('AZURE_INFERENCE_ENDPOINT')
+            self._azure_inference_credential = self._get_required_env('AZURE_INFERENCE_CREDENTIAL')
 
             self._google_client_id = self._get_required_env('GOOGLE_CLIENT_ID')    
             self._google_client_secret = self._get_required_env('GOOGLE_CLIENT_SECRET')       
@@ -80,11 +82,13 @@ class Config:
     def db_name(self) -> str:
         return self._db_name
     
-   
+    @property
+    def azure_inference_endpoint(self) -> str:
+        return self._azure_inference_endpoint
 
-   
-
-    
+    @property
+    def azure_inference_credential(self) -> str:
+        return self._azure_inference_credential
 
     # General getter for any env variable
     def get_env_var(self, key: str, default: Optional[str] = None) -> Optional[str]:

@@ -9,6 +9,7 @@ from llama_index.llms.openai import OpenAI
 from llama_index.core.agent.workflow import FunctionAgent  
 from llama_index.core.tools import FunctionTool
 from llama_index.core.memory import ChatMemoryBuffer
+from llama_index.llms.azure_inference import AzureAICompletionsModel
 
 
 
@@ -29,11 +30,17 @@ async def run_agent_async(query: str) -> KnowledgeResponse:
     """Sets up and runs the agent asynchronously using FunctionAgent."""
     
     api_key = config.openai_api_key
+    azure_endpoint = config.azure_inference_endpoint
+    azure_credential = config.azure_inference_credential
+
     if not api_key:
         raise ValueError("The OPENAI_API_KEY is not set in config.")
     
-    llm = OpenAI(model="gpt-4o", api_key=api_key)
-
+    llm = AzureAICompletionsModel(
+    endpoint=azure_endpoint,
+    credential=azure_credential,
+    model_name="gpt-4o"
+    )
     custom_system_prompt = """
                             You are the "WSO2 Knowledge Assistant", a specialized AI expert on WSO2 products and technologies. Your sole purpose is to provide accurate and helpful answers based *exclusively* on the information retrieved from the internal WSO2 knowledge base.
 
