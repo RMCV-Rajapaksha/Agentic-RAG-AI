@@ -27,6 +27,9 @@ class Config:
             self.azure_openai_endpoint = self._get_required_env('AZURE_OPENAI_ENDPOINT')
             self.azure_openai_api_version = self.get_env_var('AZURE_OPENAI_API_VERSION', '2024-12-01-preview')
 
+            self._azure_endpoint_embedding = self._get_required_env('AZURE_ENDPOINT_EMBEDDING')
+            self._azure_api_key_embedding = self._get_required_env('AZURE_API_KEY_EMBEDDING')
+
 
             self._google_client_id = self._get_required_env('GOOGLE_CLIENT_ID')
             self._google_client_secret = self._get_required_env('GOOGLE_CLIENT_SECRET')
@@ -85,8 +88,14 @@ class Config:
     @property
     def db_name(self) -> str:
         return self._db_name
+
+    @property
+    def azure_endpoint_embedding(self) -> str:
+        return self._azure_endpoint_embedding
     
-    
+    @property
+    def azure_api_key_embedding(self) -> str:
+        return self._azure_api_key_embedding
 
     # General getter for any env variable
     def get_env_var(self, key: str, default: Optional[str] = None) -> Optional[str]:
