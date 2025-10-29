@@ -272,16 +272,16 @@ def main():
     pipeline = RAGDataIngestion()
 
     urls_to_scrape = [
-        # "https://wso2.ai/",
-        # "https://wso2.com/api-management/ai/",
-        # "https://wso2.com/integration/ai/",
-        # "https://wso2.com/identity-and-access-management/ai/",
-        # "https://wso2.com/internal-developer-platform/ai/"
+        "https://wso2.ai/",
+        "https://wso2.com/api-management/ai/",
+        "https://wso2.com/integration/ai/",
+        "https://wso2.com/identity-and-access-management/ai/",
+        "https://wso2.com/internal-developer-platform/ai/"
     ]
 
     # Fetch YouTube URLs from GitHub markdown file
     
-    # github_md_url = "https://raw.githubusercontent.com/RMCV-Rajapaksha/Agentic-RAG-AI/main/YouTubeURL.md"
+    github_md_url = "https://raw.githubusercontent.com/RMCV-Rajapaksha/Agentic-RAG-AI/main/YouTubeURL.md"
     
     try:
         response = requests.get(github_md_url)
