@@ -4,6 +4,10 @@ from llama_index.core.ingestion import IngestionPipeline
 from llama_index.core.node_parser import MarkdownNodeParser
 from llama_index.core.extractors import TitleExtractor
 from llama_index.embeddings.openai import OpenAIEmbedding
+from llama_index.core.embeddings import BaseEmbedding
+from pydantic import PrivateAttr
+from azure.ai.inference import EmbeddingsClient
+from azure.core.credentials import AzureKeyCredential
 
 # Local imports
 from database.db import DatabaseConnection
@@ -25,6 +29,55 @@ from markdownify import markdownify as md
 import requests
 import re
 
+config= get_config()
+AZURE_ENDPOINT = config.azure_endpoint_embedding
+AZURE_API_KEY = config.azure_api_key_embedding
+DEPLOYMENT_NAME = "text-embedding-3-small"
+
+
+class AzureAIEmbedding(BaseEmbedding):
+    """Wrapper for Azure AI Foundry embeddings to work with llama_index"""
+    
+    _endpoint: str = PrivateAttr()
+    _api_key: str = PrivateAttr()
+    _deployment: str = PrivateAttr()
+    _embed_dim: int = PrivateAttr(default=1536)
+    _client: EmbeddingsClient = PrivateAttr()
+    
+    def __init__(self, endpoint: str, api_key: str, deployment: str, embed_dim: int = 1536, **kwargs):
+        super().__init__(**kwargs)
+        self._endpoint = endpoint
+        self._api_key = api_key
+        self._deployment = deployment
+        self._embed_dim = embed_dim
+        self._client = EmbeddingsClient(
+            endpoint=f"{endpoint}openai/deployments/{deployment}",
+            credential=AzureKeyCredential(api_key)
+        )
+    
+    @property
+    def embed_dim(self) -> int:
+        """Return the embedding dimension."""
+        return self._embed_dim
+    
+    def _get_query_embedding(self, query: str) -> list[float]:
+        """Get embedding for a query text (required by llama_index)"""
+        response = self._client.embed(input=[query])
+        return response.data[0].embedding
+    
+    def _get_text_embedding(self, text: str) -> list[float]:
+        """Get embedding for a single text"""
+        response = self._client.embed(input=[text])
+        return response.data[0].embedding
+    
+    async def _aget_query_embedding(self, query: str) -> list[float]:
+        """Async version of get_query_embedding"""
+        return self._get_query_embedding(query)
+    
+    def _get_text_embeddings(self, texts: list[str]) -> list[list[float]]:
+        """Get embeddings for multiple texts"""
+        response = self._client.embed(input=texts)
+        return [item.embedding for item in response.data]
 
 
 class LightweightConverter:
@@ -88,7 +141,13 @@ class RAGDataIngestion:
             transformations=[
                 MarkdownNodeParser(chunk_size=512, chunk_overlap=100, include_metadata=True, include_prev_next_rel=True),
                 TitleExtractor(),
-                OpenAIEmbedding(model="text-embedding-3-small", embed_dim=1536),
+            
+                AzureAIEmbedding(
+                    endpoint=AZURE_ENDPOINT,
+                    api_key=AZURE_API_KEY,
+                    deployment=DEPLOYMENT_NAME,
+                    embed_dim=1536
+                )
             ],
             vector_store=self.vector_store,
         )
@@ -213,16 +272,16 @@ def main():
     pipeline = RAGDataIngestion()
 
     urls_to_scrape = [
-        "https://wso2.ai/",
-        "https://wso2.com/api-management/ai/",
-        "https://wso2.com/integration/ai/",
-        "https://wso2.com/identity-and-access-management/ai/",
-        "https://wso2.com/internal-developer-platform/ai/"
+        # "https://wso2.ai/",
+        # "https://wso2.com/api-management/ai/",
+        # "https://wso2.com/integration/ai/",
+        # "https://wso2.com/identity-and-access-management/ai/",
+        # "https://wso2.com/internal-developer-platform/ai/"
     ]
 
     # Fetch YouTube URLs from GitHub markdown file
     
-    github_md_url = "https://raw.githubusercontent.com/RMCV-Rajapaksha/Agentic-RAG-AI/main/YouTubeURL.md"
+    # github_md_url = "https://raw.githubusercontent.com/RMCV-Rajapaksha/Agentic-RAG-AI/main/YouTubeURL.md"
     
     try:
         response = requests.get(github_md_url)

@@ -7,10 +7,23 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'
 from llama_index.llms.openai import OpenAI
 from llama_index.core.llms import ChatMessage
 from config.config import get_config
-
+from llama_index.llms.azure_openai import AzureOpenAI 
 config = get_config()
 os.environ["OPENAI_API_KEY"] = config.openai_api_key
-llm = OpenAI(model="gpt-4o-mini", temperature=0)
+
+model=config.azure_openai_model
+deployment_name=config.azure_openai_deployment_name
+azure_credential=config.azure_openai_api_key
+azure_endpoint=config.azure_openai_endpoint
+api_version=config.azure_openai_api_version
+
+llm = AzureOpenAI(
+        model=model,
+        deployment_name=deployment_name,
+        api_key=azure_credential,
+        azure_endpoint=azure_endpoint,
+        api_version=api_version
+    )
 
 instructions_for_llm = """You are a formatter. 
                             Your ONLY job is to take the given text and reformat it into Markdown. 
