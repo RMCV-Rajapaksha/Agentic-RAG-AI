@@ -27,4 +27,6 @@ dependencies = [
     "pdfplumber>=0.11.7",
     "markdownify>=1.2.0",
     "python-docx>=1.2.0",
+    "llama-index-embeddings-azure-inference>=0.4.1",
+    "llama-index-llms-azure-inference>=0.5.1",
 ]

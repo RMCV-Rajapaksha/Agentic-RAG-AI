@@ -21,15 +21,20 @@ class Config:
             self._openai_api_key = self._get_required_env('OPENAI_API_KEY')
             self._db_name = self._get_required_env('DB_NAME')
             self._google_drive_folder_id = self._get_required_env('FOLDER_ID')
-           
-
             
-
             self._db_connection_string = self._get_required_env('CONNECTION_STRING')
-            self._db_name = self._get_required_env('DB_NAME')
             self._db_table_name = self._get_required_env('DB_TABLE_NAME')
 
-            self._google_drive_folder_id = self._get_required_env('FOLDER_ID')
+            # Azure OpenAI Configuration
+            self._azure_openai_model = self._get_required_env('AZURE_OPENAI_MODEL')
+            self._azure_openai_deployment_name = self._get_required_env('AZURE_OPENAI_DEPLOYMENT_NAME')
+            self._azure_openai_api_key = self._get_required_env('AZURE_OPENAI_API_KEY')
+            self._azure_openai_endpoint = self._get_required_env('AZURE_OPENAI_ENDPOINT')
+            self._azure_openai_api_version = self._get_required_env('AZURE_OPENAI_API_VERSION')
+            
+            # Azure Embedding Configuration
+            self._azure_endpoint_embedding = self._get_required_env('AZURE_ENDPOINT_EMBEDDING')
+            self._azure_api_key_embedding = self._get_required_env('AZURE_API_KEY_EMBEDDING')
 
             # Google service account credentials from env
             self._google_credentials = {
@@ -68,7 +73,6 @@ class Config:
     def google_drive_folder_id(self) -> str:
         return self._google_drive_folder_id
 
-
     @property
     def db_connection_string(self) -> str:
         return self._db_connection_string
@@ -77,13 +81,34 @@ class Config:
     def db_table_name(self) -> str:
         return self._db_table_name
     
+    # Azure OpenAI Properties
     @property
-    def db_name(self) -> str:
-        return self._db_name
+    def azure_openai_model(self) -> str:
+        return self._azure_openai_model
     
     @property
-    def google_drive_folder_id(self) -> str:
-        return self._google_drive_folder_id
+    def azure_openai_deployment_name(self) -> str:
+        return self._azure_openai_deployment_name
+    
+    @property
+    def azure_openai_api_key(self) -> str:
+        return self._azure_openai_api_key
+    
+    @property
+    def azure_openai_endpoint(self) -> str:
+        return self._azure_openai_endpoint
+    
+    @property
+    def azure_openai_api_version(self) -> str:
+        return self._azure_openai_api_version
+    
+    @property
+    def azure_endpoint_embedding(self) -> str:
+        return self._azure_endpoint_embedding
+    
+    @property
+    def azure_api_key_embedding(self) -> str:
+        return self._azure_api_key_embedding
 
     @property
     def google_credentials(self) -> dict:
@@ -105,7 +130,7 @@ class Config:
 
     # Hide secrets in debug output
     def __repr__(self) -> str:
-        return f"<Config(openai_api_key={'*' * 10 if self._openai_api_key else None}, db_password={'*' * 10 if self._db_password else None})>"
+        return f"<Config(openai_api_key={'*' * 10 if self._openai_api_key else None}, azure_openai_api_key={'*' * 10 if self._azure_openai_api_key else None})>"
 
 # Singleton accessor
 def get_config() -> Config:
