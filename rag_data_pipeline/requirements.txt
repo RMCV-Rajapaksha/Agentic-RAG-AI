@@ -60,7 +60,7 @@ llama-index-indices-managed-llama-cloud==0.9.4
 llama-index-instrumentation==0.4.1
 llama-index-llms-azure-inference==0.5.1
 llama-index-llms-azure-openai==0.4.2
-llama-index-llms-openai==0.5.6
+llama-index-llms-openai>=0.6.0
 llama-index-readers-file==0.5.4
 llama-index-readers-google==0.7.2
 llama-index-readers-llama-parse==0.5.1
