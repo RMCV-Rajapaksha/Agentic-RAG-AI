@@ -3,7 +3,7 @@ from llama_index.vector_stores.postgres import PGVectorStore
 from config.config import get_db_connection_string, get_db_name, get_db_table_name
 import logging
 
-logger = logging.getLogger(__name__)
+
 
 class DatabaseConnection:
     """
