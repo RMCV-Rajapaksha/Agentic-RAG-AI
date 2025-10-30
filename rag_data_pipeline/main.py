@@ -12,7 +12,7 @@ from azure.core.credentials import AzureKeyCredential
 # Local imports
 from database.db import DatabaseConnection
 from src.youtube_transcripts.youtube_transcript_to_md import YouTubeTranscriptScraper
-from src.scraper.web_scraper import WebScraper
+from src.scraper.web_scraper import get_markdown
 from src.drive_reader.drive_reader import GoogleDriveLoader
 from config.config import get_config
 
@@ -128,7 +128,6 @@ class RAGDataIngestion:
     def __init__(self):
         self.config = get_config()
         self.db_connection = DatabaseConnection()
-        self.web_scraper = WebScraper()
         self.drive_loader = GoogleDriveLoader()
         self.youtube_scraper = YouTubeTranscriptScraper()
 
@@ -159,7 +158,7 @@ class RAGDataIngestion:
         documents = []
         print("Scraping web URLs for markdown content...")
         for url in urls:
-            scraped_data = self.web_scraper.get_markdown(url)
+            scraped_data = get_markdown(url)
             if scraped_data:
                 doc = Document(
                     text=scraped_data['content_markdown'],
@@ -273,15 +272,15 @@ def main():
 
     urls_to_scrape = [
         "https://wso2.ai/",
-        "https://wso2.com/api-management/ai/",
-        "https://wso2.com/integration/ai/",
-        "https://wso2.com/identity-and-access-management/ai/",
-        "https://wso2.com/internal-developer-platform/ai/"
+        # "https://wso2.com/api-management/ai/",
+        # "https://wso2.com/integration/ai/",
+        # "https://wso2.com/identity-and-access-management/ai/",
+        # "https://wso2.com/internal-developer-platform/ai/"
     ]
 
     # Fetch YouTube URLs from GitHub markdown file
     
-    github_md_url = "https://raw.githubusercontent.com/RMCV-Rajapaksha/Agentic-RAG-AI/main/YouTubeURL.md"
+    # github_md_url = "https://raw.githubusercontent.com/RMCV-Rajapaksha/Agentic-RAG-AI/main/YouTubeURL.md"
     
     try:
         response = requests.get(github_md_url)
