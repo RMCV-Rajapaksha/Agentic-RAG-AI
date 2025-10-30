@@ -1,6 +1,5 @@
 from llama_index.core.tools import FunctionTool
-from azure.ai.inference import EmbeddingsClient
-from azure.core.credentials import AzureKeyCredential
+from llama_index.embeddings.openai import OpenAIEmbedding
 import re
 from database.db import DatabaseConnection
 from config.config import get_config
@@ -11,37 +10,6 @@ config = get_config()
 
 # Regex pattern to extract YouTube timestamps like [123.45s]
 timestamp_pattern = r"\[(\d+\.?\d*)s\]"
-
-# Azure AI Foundry configuration
-AZURE_ENDPOINT = config.azure_endpoint_embedding
-AZURE_API_KEY = config.azure_api_key_embedding
-DEPLOYMENT_NAME = "text-embedding-3-small"
-
-
-class AzureAIEmbedding:
-    """Wrapper for Azure AI Foundry embeddings to work with llama_index"""
-    
-    def __init__(self, endpoint: str, api_key: str, deployment: str, embed_dim: int = 1536):
-        self.client = EmbeddingsClient(
-            endpoint=f"{endpoint}openai/deployments/{deployment}",
-            credential=AzureKeyCredential(api_key)
-        )
-        self.embed_dim = embed_dim
-        self.deployment = deployment
-    
-    def get_text_embedding(self, text: str):
-        """Get embedding for a single text"""
-        response = self.client.embed(input=[text])
-        return response.data[0].embedding
-    
-    def get_query_embedding(self, text: str):
-        """Get embedding for a query text (required by llama_index)"""
-        return self.get_text_embedding(text)
-    
-    def get_text_embedding_batch(self, texts: list):
-        """Get embeddings for multiple texts"""
-        response = self.client.embed(input=texts)
-        return [item.embedding for item in response.data]
 
 
 def get_chunks(query_text: str) -> str:
@@ -58,12 +26,10 @@ def get_chunks(query_text: str) -> str:
         # Initialize database connection and embedding model
         db_connection = DatabaseConnection()
         
-        # Use Azure AI Foundry embedding model
-        embed_model = AzureAIEmbedding(
-            endpoint=AZURE_ENDPOINT,
-            api_key=AZURE_API_KEY,
-            deployment=DEPLOYMENT_NAME,
-            embed_dim=1536
+        # Use OpenAI embedding model
+        embed_model = OpenAIEmbedding(
+            model="text-embedding-3-small",
+            api_key=config.openai_api_key
         )
 
         # Query vector database

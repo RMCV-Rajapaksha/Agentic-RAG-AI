@@ -5,7 +5,7 @@ from typing import List, Optional
 from dotenv import load_dotenv
 from pydantic import BaseModel ,Field 
 
-from llama_index.llms.azure_openai import AzureOpenAI  # Changed this import
+from llama_index.llms.openai import OpenAI
 from llama_index.core.agent.workflow import FunctionAgent  
 from llama_index.core.tools import FunctionTool
 from llama_index.core.memory import ChatMemoryBuffer
@@ -25,19 +25,10 @@ class KnowledgeResponse(BaseModel):
 async def run_agent_async(query: str) -> KnowledgeResponse:
     """Sets up and runs the agent asynchronously using FunctionAgent."""
     
-    model=config.azure_openai_model
-    deployment_name=config.azure_openai_deployment_name
-    azure_credential=config.azure_openai_api_key
-    azure_endpoint=config.azure_openai_endpoint
-    api_version=config.azure_openai_api_version
-    
-    # Use AzureOpenAI instead of AzureAICompletionsModel
-    llm = AzureOpenAI(
-        model=model,
-        deployment_name=deployment_name,
-        api_key=azure_credential,
-        azure_endpoint=azure_endpoint,
-        api_version=api_version
+    # Use OpenAI instead of Azure OpenAI
+    llm = OpenAI(
+        model="gpt-4o-mini",
+        api_key=config.openai_api_key
     )
     
     # Test the LLM directly

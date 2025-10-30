@@ -4,17 +4,13 @@ from llama_index.core.ingestion import IngestionPipeline
 from llama_index.core.node_parser import MarkdownNodeParser
 from llama_index.core.extractors import TitleExtractor
 from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.core.embeddings import BaseEmbedding
-from pydantic import PrivateAttr
-from azure.ai.inference import EmbeddingsClient
-from azure.core.credentials import AzureKeyCredential
 
 # Local imports
 from database.db import DatabaseConnection
 from src.youtube_transcripts.youtube_transcript_to_md import get_transcript_segments
 from src.scraper.web_scraper import get_markdown
 from src.drive_reader.drive_reader import load_google_drive_documents
-from config.config import get_azure_endpoint_embedding, get_azure_api_key_embedding, get_google_drive_folder_id
+from config.config import get_openai_api_key, get_google_drive_folder_id
 
 # Standard imports
 import os
@@ -29,54 +25,8 @@ from markdownify import markdownify as md
 import requests
 import re
 
-AZURE_ENDPOINT = get_azure_endpoint_embedding()
-AZURE_API_KEY = get_azure_api_key_embedding()
-DEPLOYMENT_NAME = "text-embedding-3-small"
-
-
-class AzureAIEmbedding(BaseEmbedding):
-    """Wrapper for Azure AI Foundry embeddings to work with llama_index"""
-    
-    _endpoint: str = PrivateAttr()
-    _api_key: str = PrivateAttr()
-    _deployment: str = PrivateAttr()
-    _embed_dim: int = PrivateAttr(default=1536)
-    _client: EmbeddingsClient = PrivateAttr()
-    
-    def __init__(self, endpoint: str, api_key: str, deployment: str, embed_dim: int = 1536, **kwargs):
-        super().__init__(**kwargs)
-        self._endpoint = endpoint
-        self._api_key = api_key
-        self._deployment = deployment
-        self._embed_dim = embed_dim
-        self._client = EmbeddingsClient(
-            endpoint=f"{endpoint}openai/deployments/{deployment}",
-            credential=AzureKeyCredential(api_key)
-        )
-    
-    @property
-    def embed_dim(self) -> int:
-        """Return the embedding dimension."""
-        return self._embed_dim
-    
-    def _get_query_embedding(self, query: str) -> list[float]:
-        """Get embedding for a query text (required by llama_index)"""
-        response = self._client.embed(input=[query])
-        return response.data[0].embedding
-    
-    def _get_text_embedding(self, text: str) -> list[float]:
-        """Get embedding for a single text"""
-        response = self._client.embed(input=[text])
-        return response.data[0].embedding
-    
-    async def _aget_query_embedding(self, query: str) -> list[float]:
-        """Async version of get_query_embedding"""
-        return self._get_query_embedding(query)
-    
-    def _get_text_embeddings(self, texts: list[str]) -> list[list[float]]:
-        """Get embeddings for multiple texts"""
-        response = self._client.embed(input=texts)
-        return [item.embedding for item in response.data]
+# Set OpenAI API key
+os.environ["OPENAI_API_KEY"] = get_openai_api_key()
 
 
 class LightweightConverter:
@@ -126,11 +76,9 @@ def create_ingestion_pipeline(vector_store):
         transformations=[
             MarkdownNodeParser(chunk_size=512, chunk_overlap=100, include_metadata=True, include_prev_next_rel=True),
             TitleExtractor(),
-            AzureAIEmbedding(
-                endpoint=AZURE_ENDPOINT,
-                api_key=AZURE_API_KEY,
-                deployment=DEPLOYMENT_NAME,
-                embed_dim=1536
+            OpenAIEmbedding(
+                model="text-embedding-3-small",
+                api_key=get_openai_api_key()
             )
         ],
         vector_store=vector_store,
