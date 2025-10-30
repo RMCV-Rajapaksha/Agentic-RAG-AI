@@ -11,7 +11,7 @@ from azure.core.credentials import AzureKeyCredential
 
 # Local imports
 from database.db import DatabaseConnection
-from src.youtube_transcripts.youtube_transcript_to_md import YouTubeTranscriptScraper
+from src.youtube_transcripts.youtube_transcript_to_md import get_transcript_segments
 from src.scraper.web_scraper import get_markdown
 from src.drive_reader.drive_reader import GoogleDriveLoader
 from config.config import get_config
@@ -129,7 +129,6 @@ class RAGDataIngestion:
         self.config = get_config()
         self.db_connection = DatabaseConnection()
         self.drive_loader = GoogleDriveLoader()
-        self.youtube_scraper = YouTubeTranscriptScraper()
 
         self.document_converter = LightweightConverter
         self.document_converter = LightweightConverter()
@@ -207,12 +206,21 @@ class RAGDataIngestion:
 
         return documents
 
-    def process_youtube_videos(self, urls: List[str]) -> List[Document]:
+    def process_youtube_videos(self, urls: List[str], segment_length_minutes: int = 10) -> List[Document]:
+        """Process YouTube videos and return document segments
+        
+        Args:
+            urls: List of YouTube video URLs
+            segment_length_minutes: Length of each segment in minutes (default: 10)
+            
+        Returns:
+            List of Document objects, one per segment
+        """
         documents = []
         print("Processing YouTube videos for transcript segments...")
         for link in urls:
             try:
-                video_data = self.youtube_scraper.get_transcript_segments(link)
+                video_data = get_transcript_segments(link, language="en", segment_length_minutes=segment_length_minutes)
                 for segment in video_data['segments']:
                     video_doc = Document(
                         text=segment['content_markdown'],
@@ -271,7 +279,7 @@ def main():
     pipeline = RAGDataIngestion()
 
     urls_to_scrape = [
-        "https://wso2.ai/",
+        # "https://wso2.ai/",
         # "https://wso2.com/api-management/ai/",
         # "https://wso2.com/integration/ai/",
         # "https://wso2.com/identity-and-access-management/ai/",
@@ -279,8 +287,7 @@ def main():
     ]
 
     # Fetch YouTube URLs from GitHub markdown file
-    
-    # github_md_url = "https://raw.githubusercontent.com/RMCV-Rajapaksha/Agentic-RAG-AI/main/YouTubeURL.md"
+    github_md_url = "https://raw.githubusercontent.com/RMCV-Rajapaksha/Agentic-RAG-AI/main/YouTubeURL.md"
     
     try:
         response = requests.get(github_md_url)
