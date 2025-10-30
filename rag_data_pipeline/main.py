@@ -13,7 +13,7 @@ from azure.core.credentials import AzureKeyCredential
 from database.db import DatabaseConnection
 from src.youtube_transcripts.youtube_transcript_to_md import get_transcript_segments
 from src.scraper.web_scraper import get_markdown
-from src.drive_reader.drive_reader import GoogleDriveLoader
+from src.drive_reader.drive_reader import load_google_drive_documents
 from config.config import get_azure_endpoint_embedding, get_azure_api_key_embedding, get_google_drive_folder_id
 
 # Standard imports
@@ -126,7 +126,6 @@ class RAGDataIngestion:
 
     def __init__(self):
         self.db_connection = DatabaseConnection()
-        self.drive_loader = GoogleDriveLoader()
 
         self.document_converter = LightweightConverter
         self.document_converter = LightweightConverter()
@@ -170,15 +169,17 @@ class RAGDataIngestion:
         return documents
 
     def load_drive_documents(self, folder_id: str) -> List[Document]:
-        documents = self.drive_loader.load_documents(folder_id)
+        """Load documents from Google Drive using functional approach."""
+        documents = load_google_drive_documents(folder_id)
         for doc in documents:
             doc.metadata['source'] = 'google_drive'
             doc.metadata['folder_id'] = folder_id
         return documents
 
     def convert_drive_documents_to_markdown(self, folder_id: str) -> List[Document]:
+        """Load and convert Google Drive documents to markdown using functional approach."""
         documents = []
-        drive_documents = self.drive_loader.load_documents(folder_id)
+        drive_documents = load_google_drive_documents(folder_id)
 
         for doc in drive_documents:
             if 'file_path' in doc.metadata:
@@ -285,7 +286,7 @@ def main():
     ]
 
     # Fetch YouTube URLs from GitHub markdown file
-    # github_md_url = "https://raw.githubusercontent.com/RMCV-Rajapaksha/Agentic-RAG-AI/main/YouTubeURL.md"
+    github_md_url = "https://raw.githubusercontent.com/RMCV-Rajapaksha/Agentic-RAG-AI/main/YouTubeURL.md"
     
     try:
         response = requests.get(github_md_url)
