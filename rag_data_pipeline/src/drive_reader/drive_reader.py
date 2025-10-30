@@ -50,7 +50,7 @@ def preview_document(documents, index: int = 0):
 
 # Example Usage
 if __name__ == "__main__":
-    folder_id = "1fnR7uqkbfI4FaO-wiuKemfTufWBL0k5t"  # Replace with your folder ID
+    folder_id = "---"  
     
     docs = load_google_drive_documents(folder_id=folder_id)
     preview_document(docs)
