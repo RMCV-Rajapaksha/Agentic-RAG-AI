@@ -14,7 +14,7 @@ from database.db import DatabaseConnection
 from src.youtube_transcripts.youtube_transcript_to_md import get_transcript_segments
 from src.scraper.web_scraper import get_markdown
 from src.drive_reader.drive_reader import GoogleDriveLoader
-from config.config import get_config
+from config.config import get_azure_endpoint_embedding, get_azure_api_key_embedding, get_google_drive_folder_id
 
 # Standard imports
 import os
@@ -29,9 +29,8 @@ from markdownify import markdownify as md
 import requests
 import re
 
-config= get_config()
-AZURE_ENDPOINT = config.azure_endpoint_embedding
-AZURE_API_KEY = config.azure_api_key_embedding
+AZURE_ENDPOINT = get_azure_endpoint_embedding()
+AZURE_API_KEY = get_azure_api_key_embedding()
 DEPLOYMENT_NAME = "text-embedding-3-small"
 
 
@@ -126,7 +125,6 @@ class RAGDataIngestion:
     """
 
     def __init__(self):
-        self.config = get_config()
         self.db_connection = DatabaseConnection()
         self.drive_loader = GoogleDriveLoader()
 
@@ -287,7 +285,7 @@ def main():
     ]
 
     # Fetch YouTube URLs from GitHub markdown file
-    github_md_url = "https://raw.githubusercontent.com/RMCV-Rajapaksha/Agentic-RAG-AI/main/YouTubeURL.md"
+    # github_md_url = "https://raw.githubusercontent.com/RMCV-Rajapaksha/Agentic-RAG-AI/main/YouTubeURL.md"
     
     try:
         response = requests.get(github_md_url)
@@ -306,8 +304,7 @@ def main():
     print(f"YouTube URLs to process: {urls_to_videos}")
 
 
-    config = get_config()
-    drive_folder_id = config.google_drive_folder_id
+    drive_folder_id = get_google_drive_folder_id()
 
     try:
         all_documents = []

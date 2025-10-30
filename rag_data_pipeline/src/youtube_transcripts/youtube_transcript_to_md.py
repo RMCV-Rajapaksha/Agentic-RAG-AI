@@ -6,18 +6,24 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 from llama_index.llms.openai import OpenAI
 from llama_index.core.llms import ChatMessage
-from config.config import get_config
+from config.config import (
+    get_openai_api_key,
+    get_azure_openai_model,
+    get_azure_openai_deployment_name,
+    get_azure_openai_api_key,
+    get_azure_openai_endpoint,
+    get_azure_openai_api_version
+)
 from llama_index.llms.azure_openai import AzureOpenAI 
 
 # Initialize configuration and LLM
-config = get_config()
-os.environ["OPENAI_API_KEY"] = config.openai_api_key
+os.environ["OPENAI_API_KEY"] = get_openai_api_key()
 
-model = config.azure_openai_model
-deployment_name = config.azure_openai_deployment_name
-azure_credential = config.azure_openai_api_key
-azure_endpoint = config.azure_openai_endpoint
-api_version = config.azure_openai_api_version
+model = get_azure_openai_model()
+deployment_name = get_azure_openai_deployment_name()
+azure_credential = get_azure_openai_api_key()
+azure_endpoint = get_azure_openai_endpoint()
+api_version = get_azure_openai_api_version()
 
 llm = AzureOpenAI(
     model=model,

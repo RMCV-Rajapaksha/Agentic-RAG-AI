@@ -1,6 +1,6 @@
 import os
 from llama_index.readers.google import GoogleDriveReader
-from config.config import get_config
+from config.config import get_google_credentials_json_path
 
 
 class GoogleDriveLoader:
@@ -9,11 +9,8 @@ class GoogleDriveLoader:
     """
 
     def __init__(self):
-        
-        self.config = get_config()
-        
         self.reader = GoogleDriveReader(
-            service_account_key_path=self.config.google_credentials_json_path()
+            service_account_key_path=get_google_credentials_json_path()
         )
 
     def load_documents(self, folder_id: str):
