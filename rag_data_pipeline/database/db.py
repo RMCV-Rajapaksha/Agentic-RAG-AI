@@ -1,30 +1,56 @@
+"""
+Database Connection Module
+
+This module handles database connections and vector store initialization
+for the RAG data ingestion pipeline using PostgreSQL with pgvector.
+"""
+
+# Third-party imports
 from sqlalchemy import make_url
+
+# LlamaIndex imports
 from llama_index.vector_stores.postgres import PGVectorStore
-from config.config import get_db_connection_string, get_db_name, get_db_table_name
-import logging
+
+# Local imports
+from config.config import (
+    get_db_connection_string,
+    get_db_name,
+    get_db_table_name,
+)
 
 
+# ===============================
+# Database Connection Class
+# ===============================
 
 class DatabaseConnection:
     """
-    Handles database connections and vector store initialization for data ingestion.
-
+    Handle database connections and vector store initialization for data ingestion.
+    
+    This class manages PostgreSQL connections with pgvector extension for
+    storing and retrieving document embeddings.
+    
+    Attributes:
+        connection_string: PostgreSQL connection string
+        db_name: Database name
+        table_name: Table name for storing vectors
     """
     
     def __init__(self):
+        """Initialize database connection parameters from configuration."""
         self.connection_string = get_db_connection_string()
         self.db_name = get_db_name()
         self.table_name = get_db_table_name()
         
     def get_vector_store(self, embed_dim: int = 1536):
         """
-        Returns a configured PGVectorStore instance.
+        Return a configured PGVectorStore instance.
 
         Args:
-            embed_dim (int): Embedding dimension (default: 1536 for OpenAI)
+            embed_dim: Embedding dimension (default: 1536 for OpenAI embeddings)
             
         Returns:
-            PGVectorStore: Configured vector store instance
+            PGVectorStore: Configured vector store instance with HNSW indexing
         """
         url = make_url(self.connection_string)
         
