@@ -1,9 +1,9 @@
 from sqlalchemy import make_url
 from llama_index.vector_stores.postgres import PGVectorStore
-from config.config import get_config
+from config.config import get_db_connection_string, get_db_name, get_db_table_name
 import logging
 
-logger = logging.getLogger(__name__)
+
 
 class DatabaseConnection:
     """
@@ -12,10 +12,9 @@ class DatabaseConnection:
     """
     
     def __init__(self):
-        self.config = get_config()
-        self.connection_string = self.config.db_connection_string
-        self.db_name = self.config.db_name
-        self.table_name = self.config.db_table_name
+        self.connection_string = get_db_connection_string()
+        self.db_name = get_db_name()
+        self.table_name = get_db_table_name()
         
     def get_vector_store(self, embed_dim: int = 1536):
         """
