@@ -27,7 +27,7 @@ from config.config import (
 from database.db import DatabaseConnection
 from src.drive_reader.drive_reader import convert_drive_documents_to_markdown
 from src.embeddings.azure_embedding import AzureAIEmbedding
-from src.scraper.web_scraper import scrape_web_urls
+from src.scraper.web_scraper import fetch_website_urls_from_github, scrape_web_urls
 from src.youtube_transcripts.youtube_transcript_to_md import (
     fetch_youtube_urls_from_github,
     process_youtube_videos,
@@ -263,22 +263,22 @@ def main():
     # Create ingestion pipeline
     pipeline = create_ingestion_pipeline(vector_store)
 
-    # URLs to scrape (add URLs as needed)
-    urls_to_scrape = [
-        "https://wso2.ai/",
-        # "https://wso2.com/api-management/ai/",
-        # "https://wso2.com/integration/ai/",
-        # "https://wso2.com/identity-and-access-management/ai/",
-        # "https://wso2.com/internal-developer-platform/ai/"
-    ]
 
     # Fetch YouTube URLs from GitHub markdown file
-    github_md_url = (
+    github_md_for_youtube_url = (
         "https://raw.githubusercontent.com/RMCV-Rajapaksha/"
         "Agentic-RAG-AI/main/YouTubeURL.md"
     )
-    
-    youtube_urls = []
+
+    github_md_for_website_url = (
+        "https://raw.githubusercontent.com/RMCV-Rajapaksha/"
+        "Agentic-RAG-AI/main/WebURLs.md"
+    )
+
+    website_urls = fetch_website_urls_from_github(github_md_for_website_url)
+    print(f"Found {len(website_urls)} website URLs to process.")
+
+    youtube_urls = fetch_youtube_urls_from_github(github_md_for_youtube_url)
     print(f"Found {len(youtube_urls)} YouTube URLs to process.")
 
     # Get Google Drive folder ID from config
@@ -288,7 +288,7 @@ def main():
         # Fetch all documents from sources (with database checks)
         all_documents = fetch_source_documents(
             youtube_urls=youtube_urls,
-            web_urls=urls_to_scrape,
+            web_urls=website_urls,
             drive_folder_id=drive_folder_id,
             db_connection=db_connection
         )
