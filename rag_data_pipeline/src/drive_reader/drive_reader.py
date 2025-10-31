@@ -180,19 +180,29 @@ def convert_drive_documents_to_markdown(folder_id: str) -> List[Document]:
             markdown_content = convert_document_to_markdown(file_path)
 
             if markdown_content:
+                # Create a unique identifier using file_path or file_name
+                file_name = doc.metadata.get('file_name', Path(file_path).name)
+                
                 converted_doc = Document(
                     text=markdown_content,
                     metadata={
                         'source': 'google_drive_converted',
                         'folder_id': folder_id,
                         'original_file_path': file_path,
-                        'type': 'converted_document'
+                        'file_name': file_name,
+                        'type': 'converted_document',
+                        # Add a unique URL-like identifier for duplicate checking
+                        'url': f"gdrive://{folder_id}/{file_name}"
                     }
                 )
                 documents.append(converted_doc)
         else:
+            # For documents without file_path, add metadata
+            file_name = doc.metadata.get('file_name', 'unknown')
             doc.metadata['source'] = 'google_drive'
             doc.metadata['folder_id'] = folder_id
+            # Add URL-like identifier for duplicate checking
+            doc.metadata['url'] = f"gdrive://{folder_id}/{file_name}"
             documents.append(doc)
 
     return documents

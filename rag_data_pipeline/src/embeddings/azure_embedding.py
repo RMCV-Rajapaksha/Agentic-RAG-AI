@@ -1,10 +1,11 @@
 """
 Azure AI Embedding Module
 
-This module provides a wrapper for Azure AI Foundry embeddings to work with LlamaIndex.
+This module provides functional wrappers for Azure AI Foundry embeddings to work with LlamaIndex.
 """
 
 # Third-party imports
+from typing import List, Callable
 from azure.ai.inference import EmbeddingsClient
 from azure.core.credentials import AzureKeyCredential
 from pydantic import PrivateAttr
@@ -14,28 +15,82 @@ from llama_index.core.embeddings import BaseEmbedding
 
 
 # ===============================
-# Custom Embedding Class
+# Functional Helper Functions
 # ===============================
+
+def create_embeddings_client(
+    endpoint: str,
+    api_key: str,
+    deployment: str
+) -> EmbeddingsClient:
+    """
+    Create and return an Azure Embeddings Client.
+    
+    Args:
+        endpoint: Azure AI endpoint URL
+        api_key: Azure API key for authentication
+        deployment: Deployment name for the embedding model
+        
+    Returns:
+        EmbeddingsClient: Configured Azure embeddings client
+    """
+    return EmbeddingsClient(
+        endpoint=f"{endpoint}openai/deployments/{deployment}",
+        credential=AzureKeyCredential(api_key)
+    )
+
+
+def get_embedding(client: EmbeddingsClient, text: str) -> List[float]:
+    """
+    Get embedding for a single text using the provided client.
+    
+    Args:
+        client: Azure embeddings client
+        text: Text to embed
+        
+    Returns:
+        List of floats representing the embedding vector
+    """
+    response = client.embed(input=[text])
+    return response.data[0].embedding
+
+
+def get_embeddings_batch(
+    client: EmbeddingsClient,
+    texts: List[str]
+) -> List[List[float]]:
+    """
+    Get embeddings for multiple texts using the provided client.
+    
+    Args:
+        client: Azure embeddings client
+        texts: List of texts to embed
+        
+    Returns:
+        List of embedding vectors
+    """
+    response = client.embed(input=texts)
+    return [item.embedding for item in response.data]
+
+
+# ===============================
+# LlamaIndex-Compatible Wrapper Class
+# ===============================
+
 class AzureAIEmbedding(BaseEmbedding):
     """
     Wrapper for Azure AI Foundry embeddings to work with LlamaIndex.
     
-    This class adapts the Azure AI Foundry embeddings API to be compatible
+    This class adapts functional Azure AI embeddings to be compatible
     with LlamaIndex's BaseEmbedding interface.
     
     Attributes:
-        _endpoint (str): Azure AI endpoint URL
-        _api_key (str): Azure API key for authentication
-        _deployment (str): Deployment name for the embedding model
-        _embed_dim (int): Dimension of the embedding vectors
         _client (EmbeddingsClient): Azure embeddings client instance
+        _embed_dim (int): Dimension of the embedding vectors
     """
     
-    _endpoint: str = PrivateAttr()
-    _api_key: str = PrivateAttr()
-    _deployment: str = PrivateAttr()
-    _embed_dim: int = PrivateAttr(default=1536)
     _client: EmbeddingsClient = PrivateAttr()
+    _embed_dim: int = PrivateAttr(default=1536)
     
     def __init__(
         self,
@@ -56,21 +111,15 @@ class AzureAIEmbedding(BaseEmbedding):
             **kwargs: Additional keyword arguments for BaseEmbedding
         """
         super().__init__(**kwargs)
-        self._endpoint = endpoint
-        self._api_key = api_key
-        self._deployment = deployment
         self._embed_dim = embed_dim
-        self._client = EmbeddingsClient(
-            endpoint=f"{endpoint}openai/deployments/{deployment}",
-            credential=AzureKeyCredential(api_key)
-        )
+        self._client = create_embeddings_client(endpoint, api_key, deployment)
     
     @property
     def embed_dim(self) -> int:
         """Return the embedding dimension."""
         return self._embed_dim
     
-    def _get_query_embedding(self, query: str) -> list[float]:
+    def _get_query_embedding(self, query: str) -> List[float]:
         """
         Get embedding for a query text (required by LlamaIndex).
         
@@ -80,10 +129,9 @@ class AzureAIEmbedding(BaseEmbedding):
         Returns:
             List of floats representing the embedding vector
         """
-        response = self._client.embed(input=[query])
-        return response.data[0].embedding
+        return get_embedding(self._client, query)
     
-    def _get_text_embedding(self, text: str) -> list[float]:
+    def _get_text_embedding(self, text: str) -> List[float]:
         """
         Get embedding for a single text.
         
@@ -93,10 +141,9 @@ class AzureAIEmbedding(BaseEmbedding):
         Returns:
             List of floats representing the embedding vector
         """
-        response = self._client.embed(input=[text])
-        return response.data[0].embedding
+        return get_embedding(self._client, text)
     
-    async def _aget_query_embedding(self, query: str) -> list[float]:
+    async def _aget_query_embedding(self, query: str) -> List[float]:
         """
         Async version of get_query_embedding.
         
@@ -106,9 +153,9 @@ class AzureAIEmbedding(BaseEmbedding):
         Returns:
             List of floats representing the embedding vector
         """
-        return self._get_query_embedding(query)
+        return get_embedding(self._client, query)
     
-    def _get_text_embeddings(self, texts: list[str]) -> list[list[float]]:
+    def _get_text_embeddings(self, texts: List[str]) -> List[List[float]]:
         """
         Get embeddings for multiple texts.
         
@@ -118,5 +165,4 @@ class AzureAIEmbedding(BaseEmbedding):
         Returns:
             List of embedding vectors
         """
-        response = self._client.embed(input=texts)
-        return [item.embedding for item in response.data]
+        return get_embeddings_batch(self._client, texts)
