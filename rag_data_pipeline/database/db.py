@@ -17,10 +17,19 @@ import asyncpg
 from llama_index.vector_stores.postgres import PGVectorStore
 
 # Local imports
-from config.config import (
+from config import (
     get_db_connection_string,
     get_db_name,
     get_db_table_name,
+    DatabaseConnectionError,
+)
+from config.constants import (
+    HNSW_M,
+    HNSW_EF_CONSTRUCTION,
+    HNSW_EF_SEARCH,
+    HNSW_DISTANCE_METHOD,
+    EMBEDDING_DIMENSION,
+    ERROR_MSG_DB_CONNECTION_FAILED,
 )
 
 
@@ -36,18 +45,32 @@ class DatabaseConnection:
     storing and retrieving document embeddings.
     
     Attributes:
-        connection_string: PostgreSQL connection string
-        db_name: Database name
-        table_name: Table name for storing vectors
+        connection_string (str): PostgreSQL connection string
+        db_name (str): Database name
+        table_name (str): Table name for storing vectors
+        
+    Raises:
+        DatabaseConnectionError: If database connection fails
     """
     
     def __init__(self):
-        """Initialize database connection parameters from configuration."""
-        self.connection_string = get_db_connection_string()
-        self.db_name = get_db_name()
-        self.table_name = get_db_table_name()
+        """
+        Initialize database connection parameters from configuration.
         
-    def get_vector_store(self, embed_dim: int = 1536):
+        Raises:
+            DatabaseConnectionError: If required configuration is missing
+        """
+        try:
+            self.connection_string = get_db_connection_string()
+            self.db_name = get_db_name()
+            self.table_name = get_db_table_name()
+            print(f"Database configuration loaded: {self.db_name}/{self.table_name}")
+        except Exception as e:
+            error_msg = ERROR_MSG_DB_CONNECTION_FAILED.format(str(e))
+            print(f"ERROR: {error_msg}")
+            raise DatabaseConnectionError(error_msg)
+        
+    def get_vector_store(self, embed_dim: int = EMBEDDING_DIMENSION) -> PGVectorStore:
         """
         Return a configured PGVectorStore instance.
 
@@ -56,28 +79,40 @@ class DatabaseConnection:
             
         Returns:
             PGVectorStore: Configured vector store instance with HNSW indexing
+            
+        Raises:
+            DatabaseConnectionError: If vector store creation fails
         """
-        url = make_url(self.connection_string)
-        
-        vector_store = PGVectorStore.from_params(
-            database=self.db_name,
-            host=url.host,
-            password=url.password,
-            port=url.port,
-            user=url.username,
-            table_name=self.table_name,
-            embed_dim=embed_dim,
-            hnsw_kwargs={
-                "hnsw_m": 16,
-                "hnsw_ef_construction": 64,
-                "hnsw_ef_search": 40,
-                "hnsw_dist_method": "vector_cosine_ops",
-            },
-        )
-        
-        return vector_store
+        try:
+            url = make_url(self.connection_string)
+            
+            print(f"Creating vector store connection to {url.host}:{url.port}")
+            
+            vector_store = PGVectorStore.from_params(
+                database=self.db_name,
+                host=url.host,
+                password=url.password,
+                port=url.port,
+                user=url.username,
+                table_name=self.table_name,
+                embed_dim=embed_dim,
+                hnsw_kwargs={
+                    "hnsw_m": HNSW_M,
+                    "hnsw_ef_construction": HNSW_EF_CONSTRUCTION,
+                    "hnsw_ef_search": HNSW_EF_SEARCH,
+                    "hnsw_dist_method": HNSW_DISTANCE_METHOD,
+                },
+            )
+            
+            print("Vector store created successfully")
+            return vector_store
+            
+        except Exception as e:
+            error_msg = ERROR_MSG_DB_CONNECTION_FAILED.format(str(e))
+            print(f"ERROR: {error_msg}")
+            raise DatabaseConnectionError(error_msg)
     
-    async def get_all_metadata_async(self):
+    async def get_all_metadata_async(self) -> Tuple[list, Set[str], Set[str]]:
         """
         Retrieve all data including metadata from the vector store table using asyncpg.
         
@@ -86,61 +121,75 @@ class DatabaseConnection:
                 - list: List of dictionaries containing all columns including metadata
                 - set: Set of unique URLs from metadata
                 - set: Set of unique file paths from metadata
+                
+        Raises:
+            DatabaseConnectionError: If database query fails
         """
-        # Parse the connection string to get individual components
         url = make_url(self.connection_string)
         
-        # Connect to the database using asyncpg
-        conn = await asyncpg.connect(
-            host=url.host,
-            port=url.port,
-            user=url.username,
-            password=url.password,
-            database=self.db_name
-        )
-        
         try:
-            # Query to get all data
-            query = f"""
-                SELECT 
-                    id,
-                    text,
-                    metadata_,
-                    node_id,
-                    embedding
-                FROM {self.table_name}
-            """
+            # Connect to the database using asyncpg
+            conn = await asyncpg.connect(
+                host=url.host,
+                port=url.port,
+                user=url.username,
+                password=url.password,
+                database=self.db_name
+            )
             
-            result = await conn.fetch(query)
+            print(f"Connected to database for metadata retrieval")
             
-            # Convert to list of dicts and extract URLs and file paths
-            rows = []
-            urls = set()
-            filepaths = set()
-            
-            for row in result:
-                metadata = row['metadata_']
+            try:
+                # Query to get all data
+                query = f"""
+                    SELECT 
+                        id,
+                        text,
+                        metadata_,
+                        node_id,
+                        embedding
+                    FROM {self.table_name}
+                """
                 
-                rows.append({
-                    'id': row['id'],
-                    'text': row['text'],
-                    'metadata': metadata,  # This is the JSON column
-                    'node_id': row['node_id'],
-                    'embedding': row['embedding']
-                })
+                result = await conn.fetch(query)
+                print(f"Retrieved {len(result)} records from database")
                 
-                # Extract URLs and file paths from metadata
-                if isinstance(metadata, dict):
-                    if 'url' in metadata and metadata['url']:
-                        urls.add(metadata['url'])
-                    if 'file_path' in metadata and metadata['file_path']:
-                        filepaths.add(metadata['file_path'])
-            
-            return rows, urls, filepaths
-        finally:
-            await conn.close()
+                # Convert to list of dicts and extract URLs and file paths
+                rows = []
+                urls = set()
+                filepaths = set()
+                
+                for row in result:
+                    metadata = row['metadata_']
+                    
+                    rows.append({
+                        'id': row['id'],
+                        'text': row['text'],
+                        'metadata': metadata,
+                        'node_id': row['node_id'],
+                        'embedding': row['embedding']
+                    })
+                    
+                    # Extract URLs and file paths from metadata
+                    if isinstance(metadata, dict):
+                        if 'url' in metadata and metadata['url']:
+                            urls.add(metadata['url'])
+                        if 'file_path' in metadata and metadata['file_path']:
+                            filepaths.add(metadata['file_path'])
+                
+                print(f"Found {len(urls)} unique URLs and {len(filepaths)} unique file paths")
+                return rows, urls, filepaths
+                
+            finally:
+                await conn.close()
+                print("Database connection closed")
+                
+        except Exception as e:
+            error_msg = f"Failed to retrieve metadata: {str(e)}"
+            print(f"ERROR: {error_msg}")
+            raise DatabaseConnectionError(error_msg)
     
-    def get_all_metadata(self):
+    def get_all_metadata(self) -> Tuple[list, Set[str], Set[str]]:
         """
         Synchronous wrapper for get_all_metadata_async.
         
@@ -149,5 +198,14 @@ class DatabaseConnection:
                 - list: List of dictionaries containing all columns including metadata
                 - set: Set of unique URLs from metadata
                 - set: Set of unique file paths from metadata
+                
+        Raises:
+            DatabaseConnectionError: If database query fails
         """
-        return asyncio.run(self.get_all_metadata_async())
+        try:
+            print("Fetching metadata from database (synchronous call)")
+            return asyncio.run(self.get_all_metadata_async())
+        except Exception as e:
+            error_msg = f"Failed to retrieve metadata: {str(e)}"
+            print(f"ERROR: {error_msg}")
+            raise DatabaseConnectionError(error_msg)
