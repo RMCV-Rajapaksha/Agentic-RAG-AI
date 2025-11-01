@@ -10,7 +10,8 @@ The pipeline uses LlamaIndex for document processing and Azure AI for embeddings
 """
 
 # Standard library imports
-from typing import List, Optional
+from typing import List, Optional, Set, Tuple
+import json
 
 # LlamaIndex imports
 from llama_index.core import Document
@@ -47,6 +48,105 @@ SIMILARITY_TOP_K = 10
 # ===============================
 # Pure Helper Functions
 # ===============================
+
+def get_existing_identifiers(db_connection: DatabaseConnection) -> Tuple[Set[str], Set[str]]:
+    """
+    Get existing URLs and file paths from the database.
+    
+    Args:
+        db_connection: Database connection instance
+        
+    Returns:
+        Tuple of (existing_urls, existing_filepaths)
+    """
+    print("\n🔍 Checking existing documents in database...")
+    
+    try:
+        all_data, urls, filepaths = db_connection.get_all_metadata()
+        
+        # Parse metadata if it's a string
+        for record in all_data:
+            if isinstance(record['metadata'], str):
+                try:
+                    record['metadata'] = json.loads(record['metadata'])
+                except json.JSONDecodeError:
+                    record['metadata'] = {}
+        
+        # Extract unique URLs
+        existing_urls = urls if urls else {
+            r['metadata'].get('url') 
+            for r in all_data 
+            if r['metadata'].get('url')
+        }
+        
+        # Extract unique file paths
+        existing_filepaths = filepaths if filepaths else {
+            r['metadata'].get('file_path') 
+            for r in all_data 
+            if r['metadata'].get('file_path')
+        }
+        
+        print(f"✅ Found {len(existing_urls)} existing URLs")
+        print(f"✅ Found {len(existing_filepaths)} existing file paths")
+        
+        return existing_urls, existing_filepaths
+        
+    except Exception as e:
+        print(f"⚠️ Error fetching existing data: {e}")
+        print("Proceeding without duplicate filtering...")
+        return set(), set()
+
+
+def filter_duplicate_documents(
+    documents: List[Document],
+    existing_urls: Set[str],
+    existing_filepaths: Set[str]
+) -> List[Document]:
+    """
+    Filter out documents that already exist in the database.
+    
+    Args:
+        documents: List of documents to filter
+        existing_urls: Set of existing URLs in database
+        existing_filepaths: Set of existing file paths in database
+        
+    Returns:
+        List of new documents not yet in database
+    """
+    if not documents:
+        return []
+    
+    new_documents = []
+    duplicates_count = 0
+    
+    for doc in documents:
+        metadata = doc.metadata
+        doc_url = metadata.get('url')
+        doc_filepath = metadata.get('file_path') or metadata.get('original_file_path')
+        
+        # Check if document already exists
+        is_duplicate = False
+        
+        if doc_url and doc_url in existing_urls:
+            is_duplicate = True
+            print(f"⏭️  Skipping duplicate URL: {doc_url}")
+        
+        if doc_filepath and doc_filepath in existing_filepaths:
+            is_duplicate = True
+            print(f"⏭️  Skipping duplicate file: {doc_filepath}")
+        
+        if is_duplicate:
+            duplicates_count += 1
+        else:
+            new_documents.append(doc)
+    
+    print(f"\n📊 Filtering Results:")
+    print(f"   Total documents: {len(documents)}")
+    print(f"   Duplicates filtered: {duplicates_count}")
+    print(f"   New documents to ingest: {len(new_documents)}")
+    
+    return new_documents
+
 
 def fetch_source_documents(
     youtube_urls: List[str],
@@ -197,18 +297,19 @@ def main():
         "Agentic-RAG-AI/main/WebURLs.md"
     )
 
-    website_urls = [
-        "https://wso2.ai/",
-    ]
+    website_urls = fetch_website_urls_from_github(github_md_for_website_url)
     print(f"Found {len(website_urls)} website URLs to process.")
 
-    youtube_urls = []
+    youtube_urls = fetch_youtube_urls_from_github(github_md_for_youtube_url)
     print(f"Found {len(youtube_urls)} YouTube URLs to process.")
 
     # Get Google Drive folder ID from config
     drive_folder_id = get_google_drive_folder_id()
 
     try:
+        # Get existing URLs and file paths from database
+        existing_urls, existing_filepaths = get_existing_identifiers(db_connection)
+        
         # Fetch all documents from sources
         all_documents = fetch_source_documents(
             youtube_urls=youtube_urls,
@@ -216,12 +317,19 @@ def main():
             drive_folder_id=drive_folder_id
         )
 
-        # Ingest documents
-        if all_documents:
-            ingest_documents(all_documents, pipeline)
-            print(f"✅ Pipeline completed! Total documents processed: {len(all_documents)}")
+        # Filter out duplicate documents
+        new_documents = filter_duplicate_documents(
+            all_documents,
+            existing_urls,
+            existing_filepaths
+        )
+
+        # Ingest only new documents
+        if new_documents:
+            ingest_documents(new_documents, pipeline)
+            print(f"✅ Pipeline completed! Total new documents processed: {len(new_documents)}")
         else:
-            print("⚠️ No documents found to ingest.")
+            print("⚠️ No new documents to ingest. All documents already exist in database.")
 
     except Exception as e:
         print(f"❌ An error occurred during ingestion: {e}")
