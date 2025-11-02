@@ -17,7 +17,6 @@ from dotenv import load_dotenv
 
 # Local imports
 from .exceptions import ConfigurationError
-from .constants import ERROR_MSG_MISSING_ENV_VAR
 
 
 # ===============================
@@ -52,7 +51,7 @@ def _get_env_variable(
     value = os.getenv(var_name, default)
     
     if required and not value:
-        error_msg = ERROR_MSG_MISSING_ENV_VAR.format(var_name)
+        error_msg = "Missing required environment variable: {}".format(var_name)
         print(f"ERROR: {error_msg}")
         raise ConfigurationError(error_msg)
     

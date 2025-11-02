@@ -4,7 +4,7 @@ from fastapi import FastAPI, Depends, HTTPException, status, Cookie, Request, Re
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, JSONResponse
 from pydantic import BaseModel
-from config.config import get_config
+from config import config
 from src.agent.agent import run_agent_async
 import os
 from google_auth_oauthlib.flow import Flow
@@ -15,13 +15,12 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 # --- Configuration ---
-config = get_config()
-os.environ["OPENAI_API_KEY"] = config.openai_api_key
+os.environ["OPENAI_API_KEY"] = config.get_openai_api_key()
 
 # --- Google OAuth Configuration ---
-GOOGLE_CLIENT_ID = config.google_client_id
-GOOGLE_CLIENT_SECRET = config.google_client_secret
-REDIRECT_URI = config.redirect_uri
+GOOGLE_CLIENT_ID = config.get_google_client_id()
+GOOGLE_CLIENT_SECRET = config.get_google_client_secret()
+REDIRECT_URI = config.get_redirect_uri()
 
 # Determine if we're in production based on redirect URI
 IS_PRODUCTION = not REDIRECT_URI.startswith("http://localhost")
@@ -53,7 +52,7 @@ app = FastAPI(title="Agentic RAG API", description="FastAPI server for Agentic R
 FRONTEND_URLS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    config.redirect_frontend_uri,
+    config.get_redirect_frontend_uri(),
     "https://sites.google.com",  # Allow Google Sites
     "https://552891955-atari-embeds.googleusercontent.com",  # Google embeds
 ]
@@ -111,7 +110,7 @@ async def startup_event():
     print("Agentic RAG API is starting up...")
     print(f"Server mode: {'PRODUCTION' if IS_PRODUCTION else 'DEVELOPMENT'}")
     print(f"Redirect URI: {REDIRECT_URI}")
-    print(f"Frontend URI: {config.redirect_frontend_uri}")
+    print(f"Frontend URI: {config.get_redirect_frontend_uri()}")
     print("API Documentation available at /docs")
     print("Application started successfully!")
 
@@ -163,7 +162,7 @@ async def google_callback(
     error = request.query_params.get('error')
     if error:
         print(f"OAuth error: {error}")
-        error_url = f"{config.redirect_frontend_uri}?error={error}"
+        error_url = f"{config.get_redirect_frontend_uri()}?error={error}"
         return RedirectResponse(url=error_url)
     
     if not code:
@@ -211,7 +210,7 @@ async def google_callback(
         print(f"Total active sessions: {len(sessions)}")
         
         # Redirect to frontend WITHOUT session in URL
-        response = RedirectResponse(url=config.redirect_frontend_uri)
+        response = RedirectResponse(url=config.get_redirect_frontend_uri())
         
         # Set session cookie
         response.set_cookie(
@@ -235,7 +234,7 @@ async def google_callback(
         print(f"Error during callback: {type(e).__name__}: {str(e)}")
         import traceback
         traceback.print_exc()
-        error_url = f"{config.redirect_frontend_uri}?error=auth_failed"
+        error_url = f"{config.get_redirect_frontend_uri()}?error=auth_failed"
         return RedirectResponse(url=error_url)
 
 @app.post("/auth/logout")

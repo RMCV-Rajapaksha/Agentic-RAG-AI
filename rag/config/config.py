@@ -1,110 +1,112 @@
+"""Simple functional configuration module for RAG application."""
+
 import os
 from typing import Optional
-import tempfile, json
 from dotenv import load_dotenv
 
-class Config:
-    _instance: Optional['Config'] = None
-    _initialized: bool = False
-
-    def __new__(cls) -> 'Config':
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
-    def __init__(self):
-        if not self._initialized:
-            
-            if os.path.isfile('.env'):
-                load_dotenv()
-
-            
-            self._openai_api_key = self._get_required_env('OPENAI_API_KEY')
-            self._db_name = self._get_required_env('DB_NAME')
-            self.azure_openai_model = self.get_env_var('AZURE_OPENAI_MODEL', 'gpt-4o')
-            self.azure_openai_deployment_name = self.get_env_var('AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4o')
-            self.azure_openai_api_key = self._get_required_env('AZURE_OPENAI_API_KEY')
-            self.azure_openai_endpoint = self._get_required_env('AZURE_OPENAI_ENDPOINT')
-            self.azure_openai_api_version = self.get_env_var('AZURE_OPENAI_API_VERSION', '2024-12-01-preview')
-
-            self._azure_endpoint_embedding = self._get_required_env('AZURE_ENDPOINT_EMBEDDING')
-            self._azure_api_key_embedding = self._get_required_env('AZURE_API_KEY_EMBEDDING')
+# Load environment once at module import
+if os.path.isfile('.env'):
+    load_dotenv()
 
 
-            self._google_client_id = self._get_required_env('GOOGLE_CLIENT_ID')
-            self._google_client_secret = self._get_required_env('GOOGLE_CLIENT_SECRET')
-            self._redirect_uri = self._get_required_env('REDIRECT_URI')
-            self._redirect_frontend_uri = self.get_env_var('REDIRECT_FRONTEND_URI')
+# OpenAI Configuration
+def get_openai_api_key() -> str:
+    value = os.getenv('OPENAI_API_KEY')
+    if not value:
+        raise ValueError("OPENAI_API_KEY is required but not set.")
+    return value
 
 
-            self._db_connection_string = self._get_required_env('CONNECTION_STRING')
-            self._db_name = self._get_required_env('DB_NAME')
-            self._db_table_name = self._get_required_env('DB_TABLE_NAME')
+# Azure OpenAI Configuration
+def get_azure_openai_model() -> str:
+    return os.getenv('AZURE_OPENAI_MODEL', 'gpt-4o')
 
-            
-            
 
-            Config._initialized = True
+def get_azure_openai_deployment_name() -> str:
+    return os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4o')
 
-    def _get_required_env(self, key: str) -> str:
-        value = os.getenv(key)
-        if not value:
-            raise ValueError(f"Environment variable '{key}' is required but not set.")
-        return value
 
-    
-    @property
-    def openai_api_key(self) -> str:
-        return self._openai_api_key
+def get_azure_openai_api_key() -> str:
+    value = os.getenv('AZURE_OPENAI_API_KEY')
+    if not value:
+        raise ValueError("AZURE_OPENAI_API_KEY is required but not set.")
+    return value
 
-    @property
-    def db_name(self) -> str:
-        return self._db_name
 
-    @property
-    def google_client_id(self) -> str:
-        return self._google_client_id
-    
-    @property
-    def google_client_secret(self) -> str:
-        return self._google_client_secret
+def get_azure_openai_endpoint() -> str:
+    value = os.getenv('AZURE_OPENAI_ENDPOINT')
+    if not value:
+        raise ValueError("AZURE_OPENAI_ENDPOINT is required but not set.")
+    return value
 
-    @property
-    def redirect_uri(self) -> str:
-        return self._redirect_uri
 
-    @property
-    def redirect_frontend_uri(self) -> str:
-        return self._redirect_frontend_uri
+def get_azure_openai_api_version() -> str:
+    return os.getenv('AZURE_OPENAI_API_VERSION', '2024-12-01-preview')
 
-    @property
-    def db_connection_string(self) -> str:
-        return self._db_connection_string
 
-    @property
-    def db_table_name(self) -> str:
-        return self._db_table_name
-    
-    @property
-    def db_name(self) -> str:
-        return self._db_name
+# Azure Embedding Configuration
+def get_azure_endpoint_embedding() -> str:
+    value = os.getenv('AZURE_ENDPOINT_EMBEDDING')
+    if not value:
+        raise ValueError("AZURE_ENDPOINT_EMBEDDING is required but not set.")
+    return value
 
-    @property
-    def azure_endpoint_embedding(self) -> str:
-        return self._azure_endpoint_embedding
-    
-    @property
-    def azure_api_key_embedding(self) -> str:
-        return self._azure_api_key_embedding
 
-    # General getter for any env variable
-    def get_env_var(self, key: str, default: Optional[str] = None) -> Optional[str]:
-        return os.getenv(key, default)
+def get_azure_api_key_embedding() -> str:
+    value = os.getenv('AZURE_API_KEY_EMBEDDING')
+    if not value:
+        raise ValueError("AZURE_API_KEY_EMBEDDING is required but not set.")
+    return value
 
-    # Hide secrets in debug output
-    def __repr__(self) -> str:
-        return f"<Config(openai_api_key={'*' * 10 if self._openai_api_key else None}, google_client_id={'*' * 10 if self._google_client_id else None})>"
 
-# Singleton accessor
-def get_config() -> Config:
-    return Config()
+# Google OAuth Configuration
+def get_google_client_id() -> str:
+    value = os.getenv('GOOGLE_CLIENT_ID')
+    if not value:
+        raise ValueError("GOOGLE_CLIENT_ID is required but not set.")
+    return value
+
+
+def get_google_client_secret() -> str:
+    value = os.getenv('GOOGLE_CLIENT_SECRET')
+    if not value:
+        raise ValueError("GOOGLE_CLIENT_SECRET is required but not set.")
+    return value
+
+
+def get_redirect_uri() -> str:
+    value = os.getenv('REDIRECT_URI')
+    if not value:
+        raise ValueError("REDIRECT_URI is required but not set.")
+    return value
+
+
+def get_redirect_frontend_uri() -> Optional[str]:
+    return os.getenv('REDIRECT_FRONTEND_URI')
+
+
+# Database Configuration
+def get_db_connection_string() -> str:
+    value = os.getenv('CONNECTION_STRING')
+    if not value:
+        raise ValueError("CONNECTION_STRING is required but not set.")
+    return value
+
+
+def get_db_name() -> str:
+    value = os.getenv('DB_NAME')
+    if not value:
+        raise ValueError("DB_NAME is required but not set.")
+    return value
+
+
+def get_db_table_name() -> str:
+    value = os.getenv('DB_TABLE_NAME')
+    if not value:
+        raise ValueError("DB_TABLE_NAME is required but not set.")
+    return value
+
+
+# Utility function
+def get_env_var(key: str, default: Optional[str] = None) -> Optional[str]:
+    return os.getenv(key, default)

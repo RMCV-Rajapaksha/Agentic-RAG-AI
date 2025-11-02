@@ -29,7 +29,7 @@ from config.constants import (
     HNSW_EF_SEARCH,
     HNSW_DISTANCE_METHOD,
     EMBEDDING_DIMENSION,
-    ERROR_MSG_DB_CONNECTION_FAILED,
+
 )
 
 
@@ -66,7 +66,7 @@ class DatabaseConnection:
             self.table_name = get_db_table_name()
             print(f"Database configuration loaded: {self.db_name}/{self.table_name}")
         except Exception as e:
-            error_msg = ERROR_MSG_DB_CONNECTION_FAILED.format(str(e))
+            error_msg = "Database connection failed: {}".format(str(e))
             print(f"ERROR: {error_msg}")
             raise DatabaseConnectionError(error_msg)
         
@@ -108,7 +108,7 @@ class DatabaseConnection:
             return vector_store
             
         except Exception as e:
-            error_msg = ERROR_MSG_DB_CONNECTION_FAILED.format(str(e))
+            error_msg = "Database connection failed: {}".format(str(e))
             print(f"ERROR: {error_msg}")
             raise DatabaseConnectionError(error_msg)
     

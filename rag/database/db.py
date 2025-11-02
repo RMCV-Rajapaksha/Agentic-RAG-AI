@@ -7,7 +7,7 @@ from llama_index.core.vector_stores import VectorStoreQuery
 from llama_index.core.embeddings import BaseEmbedding
 from llama_index.core.schema import NodeWithScore
 
-from config.config import get_config
+from config import config
 
 
 logger = logging.getLogger(__name__)
@@ -20,9 +20,8 @@ class DatabaseConnection:
     """
 
     def __init__(self):
-        self.config = get_config()
-        self.connection_string = self.config.db_connection_string
-        self.table_name = self.config.db_table_name
+        self.connection_string = config.get_db_connection_string()
+        self.table_name = config.get_db_table_name()
         self.vector_store = None
 
     def get_vector_store(self, embed_dim: int = 1536) -> PGVectorStore:

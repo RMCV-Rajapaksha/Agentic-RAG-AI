@@ -18,7 +18,7 @@ EMBEDDING_DIMENSION = 1536
 # ===============================
 CHUNK_SIZE = 512
 CHUNK_OVERLAP = 100
-SIMILARITY_TOP_K = 10
+
 
 # ===============================
 # YouTube Processing Configuration
@@ -53,13 +53,7 @@ GITHUB_WEBSITE_URLS_MD = (
     "Agentic-RAG-AI/main/WebURLs.md"
 )
 
-# ===============================
-# Logging Configuration
-# ===============================
-LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
-LOG_LEVEL_DEFAULT = "INFO"
-
+#
 # ===============================
 # LLM Instructions
 # ===============================
@@ -94,46 +88,6 @@ retrieval augmented generation we put in a query then it goes and get the retrie
 and we get back the retrieved text and then we construct the full prompt and we get the response
 """
 
-# ===============================
-# File Format Support
-# ===============================
-SUPPORTED_DOCUMENT_FORMATS = {
-    ".docx": "Microsoft Word",
-    ".pptx": "Microsoft PowerPoint",
-    ".odt": "OpenDocument Text",
-    ".pdf": "Portable Document Format",
-    ".txt": "Plain Text",
-    ".html": "HyperText Markup Language",
-    ".htm": "HyperText Markup Language"
-}
 
-# ===============================
-# Validation Rules
-# ===============================
-REQUIRED_ENV_VARIABLES = [
-    "DB_NAME",
-    "CONNECTION_STRING",
-    "DB_TABLE_NAME",
-]
 
-REQUIRED_ENV_VARIABLES_PRODUCTION = REQUIRED_ENV_VARIABLES + [
-    "AZURE_OPENAI_API_KEY",
-    "AZURE_OPENAI_ENDPOINT",
-    "AZURE_API_KEY_EMBEDDING",
-    "AZURE_ENDPOINT_EMBEDDING",
-]
 
-REQUIRED_ENV_VARIABLES_DEVELOPMENT = REQUIRED_ENV_VARIABLES + [
-    "OPENAI_API_KEY",
-]
-
-# ===============================
-# Error Messages
-# ===============================
-ERROR_MSG_MISSING_ENV_VAR = "Missing required environment variable: {}"
-ERROR_MSG_INVALID_URL = "Invalid URL format: {}"
-ERROR_MSG_DB_CONNECTION_FAILED = "Database connection failed: {}"
-ERROR_MSG_DOCUMENT_CONVERSION_FAILED = "Document conversion failed for {}: {}"
-ERROR_MSG_EMBEDDING_FAILED = "Embedding generation failed: {}"
-ERROR_MSG_INVALID_VIDEO_ID = "Could not extract video ID from URL: {}"
-ERROR_MSG_TRANSCRIPT_UNAVAILABLE = "Transcript not available for video: {}"

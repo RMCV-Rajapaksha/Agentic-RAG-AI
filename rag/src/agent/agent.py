@@ -10,11 +10,10 @@ from llama_index.core.agent.workflow import FunctionAgent
 from llama_index.core.tools import FunctionTool
 from llama_index.core.memory import ChatMemoryBuffer
 
-from config.config import get_config
+from config import config
 from .tools.get_similar_text_chunk import get_chunks_tool
 
 load_dotenv()
-config = get_config()
 
 
 class KnowledgeResponse(BaseModel):
@@ -25,11 +24,11 @@ class KnowledgeResponse(BaseModel):
 async def run_agent_async(query: str) -> KnowledgeResponse:
     """Sets up and runs the agent asynchronously using FunctionAgent."""
     
-    model=config.azure_openai_model
-    deployment_name=config.azure_openai_deployment_name
-    azure_credential=config.azure_openai_api_key
-    azure_endpoint=config.azure_openai_endpoint
-    api_version=config.azure_openai_api_version
+    model = config.get_azure_openai_model()
+    deployment_name = config.get_azure_openai_deployment_name()
+    azure_credential = config.get_azure_openai_api_key()
+    azure_endpoint = config.get_azure_openai_endpoint()
+    api_version = config.get_azure_openai_api_version()
     
     # Use AzureOpenAI instead of AzureAICompletionsModel
     llm = AzureOpenAI(
@@ -40,20 +39,8 @@ async def run_agent_async(query: str) -> KnowledgeResponse:
         api_version=api_version
     )
     
-    # Test the LLM directly
-    print("\n=== Testing LLM Connection ===")
-    try:
-        from llama_index.core.llms import ChatMessage
-        test_messages = [ChatMessage(role="user", content="Hello")]
-        test_response = llm.chat(test_messages)
-        print(f"✓ LLM test successful: {test_response}")
-    except Exception as e:
-        print(f"✗ LLM test failed: {type(e).__name__}: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return KnowledgeResponse(
-            answer=f"LLM connection failed: {type(e).__name__}: {str(e)}"
-        )
+ 
+    
     
     custom_system_prompt = """
                             You are the "WSO2 Knowledge Assistant", a specialized AI expert on WSO2 products and technologies. Your sole purpose is to provide accurate and helpful answers based *exclusively* on the information retrieved from the internal WSO2 knowledge base.

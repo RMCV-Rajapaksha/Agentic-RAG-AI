@@ -3,18 +3,15 @@ from azure.ai.inference import EmbeddingsClient
 from azure.core.credentials import AzureKeyCredential
 import re
 from database.db import DatabaseConnection
-from config.config import get_config
+from config import config
 import os
-
-# Load configuration
-config = get_config()
 
 # Regex pattern to extract YouTube timestamps like [123.45s]
 timestamp_pattern = r"\[(\d+\.?\d*)s\]"
 
 # Azure AI Foundry configuration
-AZURE_ENDPOINT = config.azure_endpoint_embedding
-AZURE_API_KEY = config.azure_api_key_embedding
+AZURE_ENDPOINT = config.get_azure_endpoint_embedding()
+AZURE_API_KEY = config.get_azure_api_key_embedding()
 DEPLOYMENT_NAME = "text-embedding-3-small"
 
 
