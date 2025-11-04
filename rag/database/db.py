@@ -1,3 +1,11 @@
+"""
+Database Connection Module for Agentic RAG System
+
+This module handles database connections and vector store operations
+for the RAG (Retrieval-Augmented Generation) system using PostgreSQL
+with pgvector extension.
+"""
+
 import logging
 from typing import List
 
@@ -10,34 +18,50 @@ from llama_index.core.schema import NodeWithScore
 from config import config
 
 
+# ============================================================================
+# Logging Configuration
+# ============================================================================
+
 logger = logging.getLogger(__name__)
 
 
+# ============================================================================
+# Database Connection Class
+# ============================================================================
+
 class DatabaseConnection:
     """
-    Handles database connections and vector store initialization for data ingestion.
-    Assumes the external PostgreSQL + pgvector database already exists.
+    Handles database connections and vector store initialization.
+    
+    This class manages connections to a PostgreSQL database with pgvector
+    extension for storing and querying vector embeddings.
+    
+    Attributes:
+        connection_string: PostgreSQL connection string
+        table_name: Name of the vector store table
+        vector_store: Cached PGVectorStore instance
     """
 
     def __init__(self):
+        """Initialize database connection with configuration."""
         self.connection_string = config.get_db_connection_string()
         self.table_name = config.get_db_table_name()
         self.vector_store = None
 
     def get_vector_store(self, embed_dim: int = 1536) -> PGVectorStore:
         """
-        Returns a configured PGVectorStore instance.
+        Get or create a configured PGVectorStore instance.
 
         Args:
-            embed_dim (int): Embedding dimension (default: 1536 for OpenAI)
+            embed_dim: Embedding dimension (default: 1536 for OpenAI embeddings)
 
         Returns:
-            PGVectorStore: Configured vector store instance
+            Configured PGVectorStore instance
         """
         url = make_url(self.connection_string)
 
         vector_store = PGVectorStore.from_params(
-            database=url.database,   # use DB directly from connection string
+            database=url.database,
             host=url.host,
             password=url.password,
             port=url.port,
@@ -61,15 +85,18 @@ class DatabaseConnection:
         similarity_top_k: int = 5,
     ) -> List[NodeWithScore]:
         """
-        Queries the vector store to find the most similar text chunks for a given query.
+        Query the vector store to find similar text chunks.
 
         Args:
-            query_text (str): The text query to search for.
-            embed_model (BaseEmbedding): The embedding model to use for vectorizing the query text.
-            similarity_top_k (int): The number of top similar results to retrieve.
+            query_text: The text query to search for
+            embed_model: The embedding model to vectorize the query
+            similarity_top_k: Number of top similar results to retrieve
 
         Returns:
-            List[NodeWithScore]: A list of nodes with similarity scores.
+            List of nodes with similarity scores
+
+        Raises:
+            Exception: If vector store query fails
         """
         if not query_text:
             logger.warning("Query text is empty. Returning an empty list.")

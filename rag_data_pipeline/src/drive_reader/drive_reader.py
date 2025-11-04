@@ -69,76 +69,97 @@ def preview_document(documents, index: int = 0):
 
 
 # ===============================
-# Document Converter Class
+# Document Converter Functions
 # ===============================
-class LightweightConverter:
+
+def _convert_office_document(source: str) -> str:
     """
-    Converter for various document formats to Markdown.
-    
-    Supports conversion of DOCX, PPTX, ODT, PDF, TXT, and HTML files
-    to Markdown format using lightweight libraries.
-    """
-    
-    def convert(self, source: str) -> str:
-        """
-        Convert document to Markdown using lightweight libraries.
-        
-        Args:
-            source: Path to the source document
-            
-        Returns:
-            Converted Markdown content as string, or empty string on error
-        """
-        ext = Path(source).suffix.lower()
-
-        try:
-            if ext in [".docx", ".pptx", ".odt"]:
-                # Use pypandoc for docx/pptx/odt
-                return pypandoc.convert_file(
-                    source, "md", extra_args=["--wrap=none"]
-                )
-
-            elif ext == ".pdf":
-                # Extract text from PDF
-                text = ""
-                with pdfplumber.open(source) as pdf:
-                    text = "\n".join(
-                        [page.extract_text() or "" for page in pdf.pages]
-                    )
-                return text
-
-            elif ext == ".txt":
-                # Plain text file
-                with open(source, "r", encoding="utf-8") as f:
-                    return f.read()
-
-            elif ext in [".html", ".htm"]:
-                # Convert HTML → Markdown
-                with open(source, "r", encoding="utf-8") as f:
-                    html_content = f.read()
-                return md(html_content)
-
-            else:
-                print(f"Unsupported format for {source}")
-                return ""
-
-        except Exception as e:
-            print(f"Error converting {source}: {e}")
-            return ""
-
-
-def convert_document_to_markdown(source: str) -> str:
-    """
-    Convert document to Markdown using lightweight converter.
+    Convert DOCX, PPTX, or ODT files to Markdown using pypandoc.
     
     Args:
         source: Path to the source document
         
     Returns:
-        Markdown content as string
+        Converted Markdown content as string
     """
-    converter = LightweightConverter()
-    return converter.convert(source)
+    return pypandoc.convert_file(source, "md", extra_args=["--wrap=none"])
+
+
+def _convert_pdf_document(source: str) -> str:
+    """
+    Extract text from PDF files.
+    
+    Args:
+        source: Path to the PDF document
+        
+    Returns:
+        Extracted text content as string
+    """
+    text = ""
+    with pdfplumber.open(source) as pdf:
+        text = "\n".join([page.extract_text() or "" for page in pdf.pages])
+    return text
+
+
+def _convert_text_document(source: str) -> str:
+    """
+    Read plain text files.
+    
+    Args:
+        source: Path to the text document
+        
+    Returns:
+        Text content as string
+    """
+    with open(source, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+def _convert_html_document(source: str) -> str:
+    """
+    Convert HTML files to Markdown.
+    
+    Args:
+        source: Path to the HTML document
+        
+    Returns:
+        Converted Markdown content as string
+    """
+    with open(source, "r", encoding="utf-8") as f:
+        html_content = f.read()
+    return md(html_content)
+
+
+def convert_document_to_markdown(source: str) -> str:
+    """
+    Convert document to Markdown based on file extension.
+    
+    Supports conversion of DOCX, PPTX, ODT, PDF, TXT, and HTML files
+    to Markdown format using lightweight libraries.
+    
+    Args:
+        source: Path to the source document
+        
+    Returns:
+        Converted Markdown content as string, or empty string on error
+    """
+    ext = Path(source).suffix.lower()
+
+    try:
+        if ext in [".docx", ".pptx", ".odt"]:
+            return _convert_office_document(source)
+        elif ext == ".pdf":
+            return _convert_pdf_document(source)
+        elif ext == ".txt":
+            return _convert_text_document(source)
+        elif ext in [".html", ".htm"]:
+            return _convert_html_document(source)
+        else:
+            print(f"Unsupported format for {source}")
+            return ""
+    except Exception as e:
+        print(f"Error converting {source}: {e}")
+        return ""
 
 
 def load_and_tag_drive_documents(folder_id: str) -> List[Document]:

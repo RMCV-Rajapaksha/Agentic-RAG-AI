@@ -1,28 +1,37 @@
-import asyncio
-import json
-from fastapi import FastAPI, Depends, HTTPException, status, Cookie, Request, Response
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse, JSONResponse
-from pydantic import BaseModel
-from config import config
-from src.agent.agent import run_agent_async
+"""
+FastAPI Application for Agentic RAG System
+
+This module provides a REST API with Google OAuth authentication
+for interacting with an AI-powered knowledge assistant.
+"""
+
 import os
-from google_auth_oauthlib.flow import Flow
-from google.auth.transport import requests as google_requests
-from google.oauth2 import id_token
 import secrets
 from datetime import datetime, timedelta
 from typing import Optional
 
-# --- Configuration ---
+from fastapi import FastAPI, HTTPException, status, Cookie, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
+from google_auth_oauthlib.flow import Flow
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token
+
+from config import config
+from src.agent.agent import run_agent_async
+
+
+# ============================================================================
+# Configuration
+# ============================================================================
+
 os.environ["OPENAI_API_KEY"] = config.get_openai_api_key()
 
 # --- Google OAuth Configuration ---
 GOOGLE_CLIENT_ID = config.get_google_client_id()
 GOOGLE_CLIENT_SECRET = config.get_google_client_secret()
 REDIRECT_URI = config.get_redirect_uri()
-
-# Determine if we're in production based on redirect URI
 IS_PRODUCTION = not REDIRECT_URI.startswith("http://localhost")
 
 SCOPES = [
@@ -41,50 +50,81 @@ GOOGLE_CLIENT_CONFIG = {
     }
 }
 
-# For Google OAuth, disable HTTPS requirement in development
+# Disable HTTPS requirement in development
 if not IS_PRODUCTION:
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
-# --- FastAPI App Initialization ---
-app = FastAPI(title="Agentic RAG API", description="FastAPI server for Agentic RAG system", version="1.0.0")
-
-# --- CORS Middleware ---
+# --- CORS Configuration ---
 FRONTEND_URLS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     config.get_redirect_frontend_uri(),
-    "https://sites.google.com",  # Allow Google Sites
-    "https://552891955-atari-embeds.googleusercontent.com",  # Google embeds
+    "https://sites.google.com",
+    "https://552891955-atari-embeds.googleusercontent.com",
 ]
 
-# Add wildcard patterns for Google's dynamic domains
 ALLOWED_ORIGINS_REGEX = [
-    r"https://.*\.googleusercontent\.com",  # All Google user content domains
-    r"https://.*\.google\.com",  # All Google domains
+    r"https://.*\.googleusercontent\.com",
+    r"https://.*\.google\.com",
 ]
+
+
+# ============================================================================
+# Application Initialization
+# ============================================================================
+
+app = FastAPI(
+    title="Agentic RAG API",
+    description="FastAPI server for Agentic RAG system",
+    version="1.0.0"
+)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Must be specific origins when using credentials
-    allow_origin_regex="|".join(ALLOWED_ORIGINS_REGEX),  # Dynamic Google domains
-    allow_credentials=True,  # CRITICAL: Must be True for cookies
+    allow_origins=["*"],
+    allow_origin_regex="|".join(ALLOWED_ORIGINS_REGEX),
+    allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "Cookie", "Set-Cookie"],
     expose_headers=["Set-Cookie"]
 )
 
-# --- Session Management ---
+
+# ============================================================================
+# Session Management
+# ============================================================================
+
 sessions = {}
 
+
 class Session:
-    def __init__(self, user_info):
+    """
+    Represents a user session with authentication information.
+    
+    Attributes:
+        session_id: Unique identifier for the session
+        user_info: Dictionary containing user information from OAuth
+        created_at: Timestamp when session was created
+        expires_at: Timestamp when session expires
+    """
+    
+    def __init__(self, user_info: dict):
         self.session_id = secrets.token_urlsafe(32)
         self.user_info = user_info
         self.created_at = datetime.now()
         self.expires_at = datetime.now() + timedelta(hours=24)
 
+
 def get_session_from_cookie(session_token: Optional[str] = Cookie(None)) -> Optional[dict]:
-    """Get session from cookie and validate expiry."""
+    """
+    Retrieve and validate session from cookie.
+    
+    Args:
+        session_token: Session token from cookie
+        
+    Returns:
+        User information if session is valid, None otherwise
+    """
     if not session_token or session_token not in sessions:
         return None
     
@@ -97,16 +137,28 @@ def get_session_from_cookie(session_token: Optional[str] = Cookie(None)) -> Opti
     
     return session.user_info
 
-# --- Pydantic Models ---
+
+# ============================================================================
+# Pydantic Models
+# ============================================================================
+
 class QueryRequest(BaseModel):
+    """Request model for agent queries."""
     query: str
 
+
 class QueryResponse(BaseModel):
+    """Response model for agent queries."""
     answer: str
 
-# --- Event Handlers ---
+
+# ============================================================================
+# Event Handlers
+# ============================================================================
+
 @app.on_event("startup")
 async def startup_event():
+    """Initialize application on startup."""
     print("Agentic RAG API is starting up...")
     print(f"Server mode: {'PRODUCTION' if IS_PRODUCTION else 'DEVELOPMENT'}")
     print(f"Redirect URI: {REDIRECT_URI}")
@@ -114,10 +166,22 @@ async def startup_event():
     print("API Documentation available at /docs")
     print("Application started successfully!")
 
-# --- API Endpoints ---
+
+# ============================================================================
+# Authentication Endpoints
+# ============================================================================
+
 @app.get("/auth/google/login")
 async def google_login():
-    """Initiate Google OAuth flow."""
+    """
+    Initiate Google OAuth flow.
+    
+    Returns:
+        Redirect response to Google OAuth authorization URL
+        
+    Raises:
+        HTTPException: If OAuth flow initialization fails
+    """
     try:
         flow = Flow.from_client_config(
             client_config=GOOGLE_CLIENT_CONFIG,
@@ -156,7 +220,22 @@ async def google_callback(
     state: str = None, 
     oauth_state: str = Cookie(None)
 ):
-    """Google OAuth callback - sets session cookie instead of URL redirect."""
+    """
+    Handle Google OAuth callback.
+    
+    Sets session cookie instead of URL redirect for security.
+    
+    Args:
+        request: FastAPI request object
+        code: Authorization code from Google
+        state: State parameter for CSRF protection
+        oauth_state: State stored in cookie for verification
+        
+    Returns:
+        Redirect response to frontend with session cookie set
+
+       
+    """
     print(f"Callback received - Code: {code[:20] if code else None}..., State: {state}, Cookie State: {oauth_state}")
     
     error = request.query_params.get('error')
@@ -239,7 +318,16 @@ async def google_callback(
 
 @app.post("/auth/logout")
 async def logout(response: Response, session_token: Optional[str] = Cookie(None)):
-    """Logout - clear session and cookie."""
+    """
+    Logout endpoint - clear session and cookie.
+    
+    Args:
+        response: FastAPI response object
+        session_token: Session token from cookie
+        
+    Returns:
+        Success message with cleared session cookie
+    """
     if session_token and session_token in sessions:
         del sessions[session_token]
         print(f"Session {session_token[:10]}... deleted")
@@ -252,7 +340,18 @@ async def logout(response: Response, session_token: Optional[str] = Cookie(None)
 
 @app.get("/auth/me")
 async def get_current_user(session_token: Optional[str] = Cookie(None)):
-    """Get current user info if authenticated."""
+    """
+    Get current authenticated user information.
+    
+    Args:
+        session_token: Session token from cookie
+        
+    Returns:
+        User information dictionary
+        
+    Raises:
+        HTTPException: If user is not authenticated
+    """
     
     print(f"Checking authentication - Cookie present: {bool(session_token)}")
     
@@ -267,12 +366,29 @@ async def get_current_user(session_token: Optional[str] = Cookie(None)):
     print(f"Valid session found for user: {user_info.get('email')}")
     return user_info
 
+
+# ============================================================================
+# Agent Endpoints
+# ============================================================================
+
 @app.post("/ask", response_model=QueryResponse)
 async def ask_agent(
     request: QueryRequest,
     session_token: Optional[str] = Cookie(None)
 ):
-    """Protected endpoint to interact with the agent."""
+    """
+    Protected endpoint to interact with the AI agent.
+    
+    Args:
+        request: Query request containing user question
+        session_token: Session token from cookie
+        
+    Returns:
+        QueryResponse containing agent's answer
+        
+    Raises:
+        HTTPException: If user is not authenticated or agent fails
+    """
     
     user_info = get_session_from_cookie(session_token)
     
@@ -295,7 +411,12 @@ async def ask_agent(
 
 @app.get("/health")
 def health_check():
-    """Health check endpoint."""
+    """
+    Health check endpoint.
+    
+    Returns:
+        Dictionary with status and active session count
+    """
     return {
         "status": "ok", 
         "message": "Agentic RAG API is running",
@@ -303,8 +424,10 @@ def health_check():
     }
 
 
+# ============================================================================
+# Application Entry Point
+# ============================================================================
 
-# --- Main Execution ---
 if __name__ == "__main__":
     import uvicorn
     print("Starting Agentic RAG API Server...")
