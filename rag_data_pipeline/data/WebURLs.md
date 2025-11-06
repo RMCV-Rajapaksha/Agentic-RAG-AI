@@ -1,5 +1,0 @@
-"https://wso2.ai/"
-"https://wso2.com/api-management/ai/"
-"https://wso2.com/integration/ai/"
-"https://wso2.com/identity-and-access-management/ai/"
-"https://wso2.com/internal-developer-platform/ai/"

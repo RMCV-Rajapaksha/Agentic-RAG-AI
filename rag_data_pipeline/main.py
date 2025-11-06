@@ -12,6 +12,8 @@ The pipeline uses LlamaIndex for document processing and Azure AI for embeddings
 # Standard library imports
 import sys
 from typing import List, Optional
+import csv
+import os
 
 # Local application imports
 from config import (
@@ -56,12 +58,10 @@ def main() -> int:
     Returns:
         int: Exit code (0 for success, 1 for failure)
     """
-    print("=" * 70)
-    print("Starting RAG Data Pipeline")
-    print("=" * 70)
+  
     
     try:
-        # Get Azure credentials
+
         azure_endpoint = get_azure_endpoint_embedding()
         azure_api_key = get_azure_api_key_embedding()
         
@@ -69,13 +69,13 @@ def main() -> int:
             print("ERROR: Azure embedding credentials not configured")
             return 1
         
-        # Initialize database connection and vector store
+
         print("Initializing database connection...")
         db_connection = DatabaseConnection()
         vector_store = db_connection.get_vector_store()
         print("Database connection established")
         
-        # Create ingestion pipeline with configuration
+ 
         print("Creating ingestion pipeline...")
         pipeline = create_ingestion_pipeline(
             vector_store=vector_store,
@@ -88,29 +88,57 @@ def main() -> int:
         print("Ingestion pipeline created")
 
         # Fetch URLs from GitHub markdown files
-        print("Fetching data source URLs from GitHub...")
+        # print("Fetching data source URLs from GitHub...")
         
-        # For demo, using hardcoded URLs - you can uncomment the GitHub fetching
-        website_urls = ["https://wso2.ai/"]
-        # website_urls = fetch_website_urls_from_github(GITHUB_WEBSITE_URLS_MD)
-        print(f"Found {len(website_urls)} website URLs to process")
+        # # For demo, using hardcoded URLs - you can uncomment the GitHub fetching
+        # website_urls = ["https://wso2.ai/"]
+        # # website_urls = fetch_website_urls_from_github(GITHUB_WEBSITE_URLS_MD)
+        # print(f"Found {len(website_urls)} website URLs to process")
 
+        # youtube_urls = []
+        # # youtube_urls = fetch_youtube_urls_from_github(GITHUB_YOUTUBE_URLS_MD)
+        # print(f"Found {len(youtube_urls)} YouTube URLs to process")
+
+        print("Fetching data source URLs from CSV file...")
+        
+        csv_path = os.path.join(os.path.dirname(__file__), "data", "URLs.csv")
+        website_urls = []
         youtube_urls = []
-        # youtube_urls = fetch_youtube_urls_from_github(GITHUB_YOUTUBE_URLS_MD)
-        print(f"Found {len(youtube_urls)} YouTube URLs to process")
+        
+        try:
+            with open(csv_path, 'r', encoding='utf-8') as file:
+                csv_reader = csv.DictReader(file)
+                for row in csv_reader:
 
-        # Get Google Drive folder ID from config
+                    if row['Website-URLS'].strip():
+                        website_urls.append(row['Website-URLS'].strip())
+                    
+                    if row['Youtube-URLS'].strip():
+                        youtube_urls.append(row['Youtube-URLS'].strip())
+            
+            print(f"Found {len(website_urls)} website URLs to process")
+            print(f"Found {len(youtube_urls)} YouTube URLs to process")
+            
+        except FileNotFoundError:
+            print(f"WARNING: CSV file not found at {csv_path}")
+            print("Using empty URL lists")
+        except Exception as e:
+            print(f"ERROR: Failed to read CSV file: {e}")
+            print("Using empty URL lists")
+
+
+      
         drive_folder_id = get_google_drive_folder_id()
         if drive_folder_id:
             print(f"Google Drive folder ID configured: {drive_folder_id}")
         else:
             print("WARNING: No Google Drive folder ID configured")
 
-        # Get existing URLs and file paths from database
+      
         print("Checking for existing documents in database...")
         existing_urls, existing_filepaths = get_existing_identifiers(db_connection)
         
-        # Fetch all documents from sources
+  
         print("Fetching documents from all sources...")
         all_documents = fetch_source_documents(
             youtube_urls=youtube_urls,
@@ -119,7 +147,7 @@ def main() -> int:
         )
         print(f"Total documents fetched: {len(all_documents)}")
 
-        # Filter out duplicate documents
+
         print("Filtering duplicate documents...")
         new_documents = filter_duplicate_documents(
             all_documents,
@@ -127,7 +155,7 @@ def main() -> int:
             existing_filepaths
         )
 
-        # Ingest only new documents
+
         if new_documents:
             print(f"Starting ingestion of {len(new_documents)} new documents...")
             ingest_documents(new_documents, pipeline)
