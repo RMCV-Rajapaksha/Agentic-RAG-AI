@@ -87,11 +87,11 @@ def main() -> int:
         )
         print("Ingestion pipeline created")
 
-        # Fetch URLs from GitHub markdown files
+        # # Fetch URLs from GitHub markdown files
         # print("Fetching data source URLs from GitHub...")
         
         # # For demo, using hardcoded URLs - you can uncomment the GitHub fetching
-        # website_urls = ["https://wso2.ai/"]
+        # website_urls = ["https://wso2.com/api-management/ai/"]
         # # website_urls = fetch_website_urls_from_github(GITHUB_WEBSITE_URLS_MD)
         # print(f"Found {len(website_urls)} website URLs to process")
 
