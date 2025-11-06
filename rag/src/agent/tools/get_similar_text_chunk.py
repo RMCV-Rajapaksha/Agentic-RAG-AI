@@ -16,9 +16,6 @@ from database.db import DatabaseConnection
 from config import config
 
 
-# ============================================================================
-# Constants
-# ============================================================================
 
 # Regex pattern to extract YouTube timestamps like [123.45s]
 TIMESTAMP_PATTERN = r"\[(\d+\.?\d*)s\]"
@@ -30,10 +27,6 @@ DEPLOYMENT_NAME = "text-embedding-3-small"
 EMBEDDING_DIMENSION = 1536
 SIMILARITY_TOP_K = 10
 
-
-# ============================================================================
-# Azure Embedding Wrapper
-# ============================================================================
 
 class AzureAIEmbedding:
     """
@@ -104,9 +97,6 @@ class AzureAIEmbedding:
         return [item.embedding for item in response.data]
 
 
-# ============================================================================
-# Query Function
-# ============================================================================
 
 def get_chunks(query_text: str) -> str:
     """
@@ -178,9 +168,6 @@ def get_chunks(query_text: str) -> str:
         return f"An error occurred while trying to retrieve text chunks: {e}"
 
 
-# ============================================================================
-# LlamaIndex Tool Configuration
-# ============================================================================
 
 get_chunks_tool = FunctionTool.from_defaults(
     fn=get_chunks,

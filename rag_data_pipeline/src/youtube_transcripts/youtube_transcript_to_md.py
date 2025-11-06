@@ -219,12 +219,9 @@ def process_segment_content(
     
     # Convert to markdown using LLM
     try:
-        enhanced_instructions = YOUTUBE_TRANSCRIPT_FORMAT_INSTRUCTIONS + """
-        Keep all timestamps in the format [XXX.XXs] at the beginning of each line.
-        Preserve the timestamp information exactly as provided in seconds format.
-        """
+       
         messages = [
-            ChatMessage(role="user", content=enhanced_instructions), 
+            ChatMessage(role="user", content=YOUTUBE_TRANSCRIPT_FORMAT_INSTRUCTIONS), 
             ChatMessage(role="user", content=content_with_timestamps)
         ]
         response = llm.chat(messages)

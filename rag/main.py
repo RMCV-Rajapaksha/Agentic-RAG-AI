@@ -198,7 +198,7 @@ async def google_login():
         print(f"Generated auth URL: {authorization_url}")
         print(f"State: {state}")
         
-        # Store state in a cookie for CSRF protection
+       
         response = RedirectResponse(url=authorization_url)
         response.set_cookie(
             key="oauth_state", 
@@ -284,7 +284,7 @@ async def google_callback(
             'sub': id_info.get('sub')
         })
         sessions[session.session_id] = session
-        
+
         print(f"Session created: {session.session_id[:10]}...")
         print(f"Total active sessions: {len(sessions)}")
         

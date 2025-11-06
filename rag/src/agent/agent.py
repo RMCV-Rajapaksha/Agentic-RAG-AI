@@ -68,9 +68,6 @@ Always structure your response with clear sections and subsections when appropri
 """
 
 
-# ============================================================================
-# Pydantic Models
-# ============================================================================
 
 class KnowledgeResponse(BaseModel):
     """The final structured response for the user."""
@@ -80,23 +77,6 @@ class KnowledgeResponse(BaseModel):
     )
 
 
-# ============================================================================
-# Agent Functions
-# ============================================================================
-
-async def run_agent_async(query: str) -> KnowledgeResponse:
-    """
-    Set up and run the AI agent asynchronously.
-    
-    Args:
-        query: User's question or query string
-        
-    Returns:
-        KnowledgeResponse containing the formatted answer
-        
-    Raises:
-        Various exceptions if agent initialization or execution fails
-    """
 async def run_agent_async(query: str) -> KnowledgeResponse:
     """
     Set up and run the AI agent asynchronously.
