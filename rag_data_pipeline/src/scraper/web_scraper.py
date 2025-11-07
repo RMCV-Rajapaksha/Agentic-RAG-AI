@@ -263,29 +263,3 @@ def scrape_web_urls(urls: List[str]) -> List[Document]:
             documents.append(doc)
     
     return documents
-
-def fetch_website_urls_from_github(github_md_url: str) -> List[str]:
-    """
-    Fetch website URLs from a GitHub markdown file.
-
-    Args:
-        github_md_url: URL to the GitHub markdown file
-
-    Returns:
-        List of website URLs found in the markdown file
-    """
-    try:
-        response = requests.get(github_md_url)
-        response.raise_for_status()
-        md_content = response.text
-
-     
-        website_url_pattern = r'https?://\S+'
-        urls_to_websites = re.findall(website_url_pattern, md_content)
-
-        print(f"Found {len(urls_to_websites)} website URLs from markdown file")
-        return urls_to_websites
-
-    except Exception as e:
-        print(f"Error fetching URLs from markdown: {e}")
-        return []

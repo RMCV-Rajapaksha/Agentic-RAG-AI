@@ -374,28 +374,3 @@ def process_youtube_videos(
     return documents
 
 
-def fetch_youtube_urls_from_github(github_md_url: str) -> List[str]:
-    """
-    Fetch YouTube URLs from a GitHub markdown file.
-    
-    Args:
-        github_md_url: URL to the GitHub markdown file
-        
-    Returns:
-        List of YouTube URLs found in the markdown file
-    """
-    try:
-        response = requests.get(github_md_url)
-        response.raise_for_status()
-        md_content = response.text
-        
-        # Extract YouTube URLs using regex
-        youtube_url_pattern = r'https://www\.youtube\.com/watch\?v=[\w-]+'
-        urls_to_videos = re.findall(youtube_url_pattern, md_content)
-        
-        logger.info(f"Found {len(urls_to_videos)} YouTube URLs from markdown file")
-        return urls_to_videos
-        
-    except Exception as e:
-        logger.error(f"Error fetching URLs from markdown: {e}", exc_info=True)
-        return []

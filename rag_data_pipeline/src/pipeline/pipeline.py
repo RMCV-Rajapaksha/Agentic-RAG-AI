@@ -10,125 +10,57 @@ It includes functions for:
 
 import logging
 from typing import List
+import os
+
+from dotenv import load_dotenv
+
 
 from llama_index.core import Document
 from llama_index.core.extractors import TitleExtractor
 from llama_index.core.ingestion import IngestionPipeline
 from llama_index.core.node_parser import MarkdownNodeParser
 
+from database.db import DatabaseConnection
 from src.embeddings.azure_embedding import AzureAIEmbedding
 from config.exceptions import EmbeddingGenerationError
+
+from config.constants import (
+    EMBEDDING_DEPLOYMENT_NAME,
+    CHUNK_SIZE,
+    CHUNK_OVERLAP,
+   
+)
+
 
 # Configure logger
 logger = logging.getLogger(__name__)
 
+load_dotenv()
 
 
- 
+# --- Global Components (Reusable) ---
 
-def create_embedding_model(
-    endpoint: str,
-    api_key: str,
-    deployment: str,
-    embed_dim: int = 1536
-) -> AzureAIEmbedding:
-    """
-    Create Azure AI embedding model instance.
-    
-    Args:
-        endpoint: Azure endpoint URL
-        api_key: Azure API key
-        deployment: Deployment name
-        embed_dim: Embedding dimension (default: 1536)
-        
-    Returns:
-        Configured AzureAIEmbedding instance
-        
-    Raises:
-        EmbeddingGenerationError: If model creation fails
-    """
-    try:
-        logger.info(f"Creating embedding model: {deployment}")
-        model = AzureAIEmbedding(
-            endpoint=endpoint,
-            api_key=api_key,
-            deployment=deployment,
-            embed_dim=embed_dim
-        )
-        logger.info(f"Embedding model created successfully")
-        return model
-    except Exception as e:
-        error_msg = f"Failed to create embedding model: {str(e)}"
-        logger.error(error_msg, exc_info=True)
-        raise EmbeddingGenerationError(error_msg)
+AZURE_ENDPOINT_EMBEDDING = os.getenv('AZURE_ENDPOINT_EMBEDDING')
+AZURE_API_KEY_EMBEDDING = os.getenv('AZURE_API_KEY_EMBEDDING')
 
+# The embedding model can be global as it's stateless and reusable
+EMBEDDING_MODEL = AzureAIEmbedding(
+        endpoint=AZURE_ENDPOINT_EMBEDDING,
+        api_key=AZURE_API_KEY_EMBEDDING,
+        deployment=EMBEDDING_DEPLOYMENT_NAME,
+        embed_dim=1536
+    )
 
-def create_ingestion_pipeline(
-    vector_store,
-    endpoint: str,
-    api_key: str,
-    deployment: str,
-    chunk_size: int = 512,
-    chunk_overlap: int = 100
-) -> IngestionPipeline:
-    """
-    Create and return an ingestion pipeline with transformations.
-    
-    The pipeline includes:
-    - MarkdownNodeParser for chunking documents
-    - TitleExtractor for extracting titles
-    - AzureAIEmbedding for generating embeddings
-    
-    Args:
-        vector_store: Vector store instance for storing embeddings
-        endpoint: Azure endpoint URL
-        api_key: Azure API key
-        deployment: Deployment name
-        chunk_size: Size of document chunks (default: 512)
-        chunk_overlap: Overlap between chunks (default: 100)
-        
-    Returns:
-        Configured ingestion pipeline
-        
-    Raises:
-        EmbeddingGenerationError: If pipeline creation fails
-    """
-    try:
-        logger.info(f"Creating ingestion pipeline with chunk_size={chunk_size}, overlap={chunk_overlap}")
-        
-        pipeline = IngestionPipeline(
-            transformations=[
-                MarkdownNodeParser(
-                    chunk_size=chunk_size,
-                    chunk_overlap=chunk_overlap,
-                    include_metadata=True,
-                    include_prev_next_rel=True
-                ),
-                TitleExtractor(),
-                create_embedding_model(endpoint, api_key, deployment)
-            ],
-            vector_store=vector_store,
-        )
-        
-        logger.info("Ingestion pipeline configured successfully")
-        return pipeline
-        
-    except Exception as e:
-        error_msg = f"Failed to create ingestion pipeline: {str(e)}"
-        logger.error(error_msg, exc_info=True)
-        raise EmbeddingGenerationError(error_msg)
 
 
 def ingest_documents(
     documents: List[Document],
-    pipeline: IngestionPipeline
 ) -> None:
     """
     Ingest documents into the vector store using the pipeline.
     
     Args:
         documents: List of documents to ingest
-        pipeline: Ingestion pipeline instance
         
     Raises:
         EmbeddingGenerationError: If ingestion fails
@@ -138,6 +70,26 @@ def ingest_documents(
         return
 
     try:
+        # --- Create DB connection and pipeline here ---
+        logger.info("Connecting to database to get vector store...")
+        db_connection = DatabaseConnection()
+        vector_store = db_connection.get_vector_store()
+        
+        logger.info("Building ingestion pipeline...")
+        pipeline = IngestionPipeline(
+            transformations=[
+                MarkdownNodeParser(
+                    chunk_size=CHUNK_SIZE,
+                    chunk_overlap=CHUNK_OVERLAP,
+                    include_metadata=True,
+                    include_prev_next_rel=True
+                ),
+                TitleExtractor(),
+                EMBEDDING_MODEL  # Use the global embedding model
+            ],
+            vector_store=vector_store # Use the freshly created vector store
+        )
+
         logger.info(f"Ingesting {len(documents)} document(s)...")
         pipeline.run(documents=documents, show_progress=True)
         logger.info(f"Successfully ingested {len(documents)} documents")

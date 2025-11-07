@@ -35,29 +35,18 @@ FOLDER_ID = os.getenv('FOLDER_ID')
 
 # Local application imports
 from config.exceptions import RAGPipelineException
-from config.constants import (
-    EMBEDDING_DEPLOYMENT_NAME,
-    CHUNK_SIZE,
-    CHUNK_OVERLAP,
-    GITHUB_YOUTUBE_URLS_MD,
-    GITHUB_WEBSITE_URLS_MD,
-)
-from database import DatabaseConnection
-from src.pipeline import create_ingestion_pipeline, ingest_documents
-from src.scraper.web_scraper import fetch_website_urls_from_github
+
+
+from src.pipeline import ingest_documents
+
 from src.utils import (
     fetch_source_documents,
-    filter_duplicate_documents,
     get_existing_identifiers,
 )
-from src.youtube_transcripts.youtube_transcript_to_md import (
-    fetch_youtube_urls_from_github,
-)
 
 
-# ===============================
-# Main Entry Point
-# ===============================
+
+
 def main() -> int:
     """
     Main entry point for the RAG data pipeline.
@@ -65,8 +54,9 @@ def main() -> int:
     This function:
     1. Initializes database connection and vector store
     2. Creates ingestion pipeline
-    3. Fetches documents from all sources (YouTube, Web, Google Drive)
-    4. Filters duplicates and ingests documents into the vector store
+    3. Filters URLs to find new documents
+    4. Fetches only new documents from all sources (YouTube, Web, Google Drive)
+    5. Ingests new documents into the vector store
     
     Returns:
         int: Exit code (0 for success, 1 for failure)
@@ -76,42 +66,12 @@ def main() -> int:
     logger.info("=" * 70)
     
     try:
-        # Validate Azure credentials
-        if not AZURE_ENDPOINT_EMBEDDING or not AZURE_API_KEY_EMBEDDING:
-            logger.error("Azure embedding credentials not configured in environment variables")
-            logger.error("Required: AZURE_ENDPOINT_EMBEDDING, AZURE_API_KEY_EMBEDDING")
-            return 1
         
-        logger.info("Azure embedding credentials validated")
+        
 
-        # Initialize database connection
-        logger.info("Initializing database connection...")
-        try:
-            db_connection = DatabaseConnection()
-            vector_store = db_connection.get_vector_store()
-            logger.info("Database connection established successfully")
-        except Exception as e:
-            logger.error(f"Failed to establish database connection: {e}", exc_info=True)
-            return 1
         
  
-        # Create ingestion pipeline
-        logger.info("Creating ingestion pipeline...")
-        try:
-            pipeline = create_ingestion_pipeline(
-                vector_store=vector_store,
-                endpoint=AZURE_ENDPOINT_EMBEDDING,
-                api_key=AZURE_API_KEY_EMBEDDING,
-                deployment=EMBEDDING_DEPLOYMENT_NAME,
-                chunk_size=CHUNK_SIZE,
-                chunk_overlap=CHUNK_OVERLAP
-            )
-            logger.info("Ingestion pipeline created successfully")
-        except Exception as e:
-            logger.error(f"Failed to create ingestion pipeline: {e}", exc_info=True)
-            return 1
-
-
+        
         # Load URLs from CSV file
         logger.info("Loading data source URLs from CSV file...")
         csv_path = os.path.join(os.path.dirname(__file__), "data", "URLs.csv")
@@ -121,15 +81,30 @@ def main() -> int:
         try:
             with open(csv_path, 'r', encoding='utf-8') as file:
                 csv_reader = csv.DictReader(file)
+                row_count = 0
+                
                 for row in csv_reader:
-                    if row['Website-URLS'].strip():
-                        website_urls.append(row['Website-URLS'].strip())
+                    row_count += 1
                     
-                    if row['Youtube-URLS'].strip():
-                        youtube_urls.append(row['Youtube-URLS'].strip())
+                    # Safely process Website URLs
+                    website_url = row.get('Website-URLS')
+                    if website_url and website_url.strip():
+                        website_urls.append(website_url.strip())
+                    
+                    # Safely process YouTube URLs
+                    youtube_url = row.get('Youtube-URLS')
+                    if youtube_url and youtube_url.strip():
+                        youtube_urls.append(youtube_url.strip())
             
+            logger.info(f"Processed {row_count} rows from CSV file")
             logger.info(f"Found {len(website_urls)} website URLs to process")
             logger.info(f"Found {len(youtube_urls)} YouTube URLs to process")
+            
+            # Validate that we have at least some URLs
+            if not website_urls and not youtube_urls and not FOLDER_ID:
+                logger.warning("No URLs found in CSV and no Google Drive folder configured")
+                logger.warning("Pipeline will have no documents to process")
+                return 0
            
         except FileNotFoundError:
             logger.error(f"CSV file not found at {csv_path}")
@@ -144,7 +119,6 @@ def main() -> int:
             return 1
 
 
-      
         # Check Google Drive configuration
         if FOLDER_ID:
             logger.info(f"Google Drive folder ID configured: {FOLDER_ID}")
@@ -156,46 +130,77 @@ def main() -> int:
         logger.info("Checking for existing documents in database...")
         try:
             existing_urls, existing_filepaths = get_existing_identifiers(db_connection)
+            logger.info(f"Found {len(existing_urls)} existing URLs in database")
+            logger.info(f"Found {len(existing_filepaths)} existing file paths in database")
         except Exception as e:
             logger.warning(f"Failed to retrieve existing identifiers: {e}")
             logger.warning("Proceeding without duplicate filtering")
             existing_urls, existing_filepaths = set(), set()
         
-        # Fetch documents from all sources
-        logger.info("Fetching documents from all sources...")
+        # Filter URLs before fetching
+        logger.info("Filtering URLs to determine new documents...")
+        new_youtube_urls = [url for url in youtube_urls if url not in existing_urls]
+        new_web_urls = [url for url in website_urls if url not in existing_urls]
+        
+        logger.info(f"Filtered results:")
+        logger.info(f"  YouTube URLs - Total: {len(youtube_urls)}, New: {len(new_youtube_urls)}, Existing: {len(youtube_urls) - len(new_youtube_urls)}")
+        logger.info(f"  Web URLs - Total: {len(website_urls)}, New: {len(new_web_urls)}, Existing: {len(website_urls) - len(new_web_urls)}")
+        
+        # Check if there's anything to fetch
+        if not new_youtube_urls and not new_web_urls and not FOLDER_ID:
+            logger.warning("=" * 70)
+            logger.warning("No new documents to process")
+            logger.warning("All URLs already exist in database")
+            logger.warning("=" * 70)
+            return 0
+        
+        # Fetch only new documents from filtered sources
+        logger.info("Fetching only new documents from sources...")
+        all_documents = []
+        
         try:
-            all_documents = fetch_source_documents(
-                youtube_urls=youtube_urls,
-                web_urls=website_urls,
-                drive_folder_id=FOLDER_ID
-            )
-            logger.info(f"Total documents fetched: {len(all_documents)}")
+            # For Google Drive, we'll fetch and filter after since we can't pre-filter by URL
+            if FOLDER_ID:
+                logger.info(f"Fetching Google Drive documents (will filter after)...")
+                drive_documents = fetch_source_documents(
+                    youtube_urls=[],
+                    web_urls=[],
+                    drive_folder_id=FOLDER_ID
+                )
+                # Filter Google Drive documents by file path
+                new_drive_documents = [
+                    doc for doc in drive_documents 
+                    if doc.metadata.get('file_path') not in existing_filepaths 
+                    and doc.metadata.get('original_file_path') not in existing_filepaths
+                ]
+                logger.info(f"Google Drive - Total: {len(drive_documents)}, New: {len(new_drive_documents)}, Existing: {len(drive_documents) - len(new_drive_documents)}")
+                all_documents.extend(new_drive_documents)
+            
+            # Fetch only new YouTube and web documents
+            if new_youtube_urls or new_web_urls:
+                logger.info("Fetching new YouTube and web documents...")
+                new_url_documents = fetch_source_documents(
+                    youtube_urls=new_youtube_urls,
+                    web_urls=new_web_urls,
+                    drive_folder_id=None
+                )
+                all_documents.extend(new_url_documents)
+            
+            logger.info(f"Total new documents to ingest: {len(all_documents)}")
+            
         except Exception as e:
             logger.error(f"Failed to fetch documents: {e}", exc_info=True)
             return 1
 
 
-        # Filter duplicates
-        logger.info("Filtering duplicate documents...")
-        try:
-            new_documents = filter_duplicate_documents(
-                all_documents,
-                existing_urls,
-                existing_filepaths
-            )
-        except Exception as e:
-            logger.error(f"Failed to filter duplicates: {e}", exc_info=True)
-            return 1
-
-
         # Ingest new documents
-        if new_documents:
-            logger.info(f"Starting ingestion of {len(new_documents)} new documents...")
+        if all_documents:
+            logger.info(f"Starting ingestion of {len(all_documents)} new documents...")
             try:
-                ingest_documents(new_documents, pipeline)
+                ingest_documents(all_documents, pipeline)
                 logger.info("=" * 70)
                 logger.info(f"Pipeline completed successfully!")
-                logger.info(f"Total new documents processed: {len(new_documents)}")
+                logger.info(f"Total new documents processed: {len(all_documents)}")
                 logger.info("=" * 70)
             except Exception as e:
                 logger.error(f"Failed to ingest documents: {e}", exc_info=True)
