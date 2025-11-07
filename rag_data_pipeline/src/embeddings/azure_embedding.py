@@ -6,6 +6,7 @@ Optimized to reduce redundancy and improve performance.
 """
 
 # Third-party imports
+import logging
 from typing import List
 from azure.ai.inference import EmbeddingsClient
 from azure.core.credentials import AzureKeyCredential
@@ -13,6 +14,9 @@ from pydantic import PrivateAttr
 
 # LlamaIndex imports
 from llama_index.core.embeddings import BaseEmbedding
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 
 # ===============================
@@ -54,7 +58,12 @@ class AzureAIEmbedding(BaseEmbedding):
         """
         super().__init__(**kwargs)
         self._embed_dim = embed_dim
-        self._client = self._create_client(endpoint, api_key, deployment)
+        try:
+            self._client = self._create_client(endpoint, api_key, deployment)
+            logger.info(f"Azure AI Embedding client initialized for deployment: {deployment}")
+        except Exception as e:
+            logger.error(f"Failed to initialize Azure AI Embedding client: {e}", exc_info=True)
+            raise
     
     @staticmethod
     def _create_client(endpoint: str, api_key: str, deployment: str) -> EmbeddingsClient:
@@ -89,8 +98,15 @@ class AzureAIEmbedding(BaseEmbedding):
         Returns:
             List of embedding vectors
         """
-        response = self._client.embed(input=texts)
-        return [item.embedding for item in response.data]
+        try:
+            logger.debug(f"Generating embeddings for {len(texts)} text(s)")
+            response = self._client.embed(input=texts)
+            embeddings = [item.embedding for item in response.data]
+            logger.debug(f"Successfully generated {len(embeddings)} embedding(s)")
+            return embeddings
+        except Exception as e:
+            logger.error(f"Failed to generate embeddings: {e}", exc_info=True)
+            raise
     
     def _get_query_embedding(self, query: str) -> List[float]:
         """

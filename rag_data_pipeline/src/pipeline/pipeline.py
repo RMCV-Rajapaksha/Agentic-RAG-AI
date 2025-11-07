@@ -8,6 +8,7 @@ It includes functions for:
 - Ingesting documents into the vector store
 """
 
+import logging
 from typing import List
 
 from llama_index.core import Document
@@ -16,8 +17,14 @@ from llama_index.core.ingestion import IngestionPipeline
 from llama_index.core.node_parser import MarkdownNodeParser
 
 from src.embeddings.azure_embedding import AzureAIEmbedding
-from config import EmbeddingGenerationError
+from config.exceptions import EmbeddingGenerationError
 
+# Configure logger
+logger = logging.getLogger(__name__)
+
+
+
+ 
 
 def create_embedding_model(
     endpoint: str,
@@ -41,18 +48,18 @@ def create_embedding_model(
         EmbeddingGenerationError: If model creation fails
     """
     try:
-        print(f"Creating embedding model: {deployment}")
+        logger.info(f"Creating embedding model: {deployment}")
         model = AzureAIEmbedding(
             endpoint=endpoint,
             api_key=api_key,
             deployment=deployment,
             embed_dim=embed_dim
         )
-        print(f"Embedding model created successfully")
+        logger.info(f"Embedding model created successfully")
         return model
     except Exception as e:
         error_msg = f"Failed to create embedding model: {str(e)}"
-        print(f"ERROR: {error_msg}")
+        logger.error(error_msg, exc_info=True)
         raise EmbeddingGenerationError(error_msg)
 
 
@@ -87,7 +94,7 @@ def create_ingestion_pipeline(
         EmbeddingGenerationError: If pipeline creation fails
     """
     try:
-        print(f"Creating ingestion pipeline with chunk_size={chunk_size}, overlap={chunk_overlap}")
+        logger.info(f"Creating ingestion pipeline with chunk_size={chunk_size}, overlap={chunk_overlap}")
         
         pipeline = IngestionPipeline(
             transformations=[
@@ -103,12 +110,12 @@ def create_ingestion_pipeline(
             vector_store=vector_store,
         )
         
-        print("Ingestion pipeline configured successfully")
+        logger.info("Ingestion pipeline configured successfully")
         return pipeline
         
     except Exception as e:
         error_msg = f"Failed to create ingestion pipeline: {str(e)}"
-        print(f"ERROR: {error_msg}")
+        logger.error(error_msg, exc_info=True)
         raise EmbeddingGenerationError(error_msg)
 
 
@@ -127,15 +134,15 @@ def ingest_documents(
         EmbeddingGenerationError: If ingestion fails
     """
     if not documents:
-        print("WARNING: No documents provided for ingestion")
+        logger.warning("No documents provided for ingestion")
         return
 
     try:
-        print(f"Ingesting {len(documents)} document(s)...")
+        logger.info(f"Ingesting {len(documents)} document(s)...")
         pipeline.run(documents=documents, show_progress=True)
-        print(f"Successfully ingested {len(documents)} documents")
+        logger.info(f"Successfully ingested {len(documents)} documents")
         
     except Exception as e:
         error_msg = f"Document ingestion failed: {str(e)}"
-        print(f"ERROR: {error_msg}")
+        logger.error(error_msg, exc_info=True)
         raise EmbeddingGenerationError(error_msg)

@@ -8,6 +8,7 @@ This module provides utility functions for:
 """
 
 import json
+import logging
 from typing import List, Optional, Set, Tuple
 
 from llama_index.core import Document
@@ -16,6 +17,9 @@ from database.db import DatabaseConnection
 from src.drive_reader.drive_reader import convert_drive_documents_to_markdown
 from src.scraper.web_scraper import scrape_web_urls
 from src.youtube_transcripts.youtube_transcript_to_md import process_youtube_videos
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 
 def get_existing_identifiers(
@@ -30,7 +34,7 @@ def get_existing_identifiers(
     Returns:
         Tuple of (existing_urls, existing_filepaths)
     """
-    print("\n🔍 Checking existing documents in database...")
+    logger.info("Checking existing documents in database...")
     
     try:
         all_data, urls, filepaths = db_connection.get_all_metadata()
@@ -41,6 +45,7 @@ def get_existing_identifiers(
                 try:
                     record['metadata'] = json.loads(record['metadata'])
                 except json.JSONDecodeError:
+                    logger.warning(f"Failed to parse metadata for record {record.get('id')}")
                     record['metadata'] = {}
         
         # Extract unique URLs
@@ -57,14 +62,14 @@ def get_existing_identifiers(
             if r['metadata'].get('file_path')
         }
         
-        print(f"Found {len(existing_urls)} existing URLs")
-        print(f"Found {len(existing_filepaths)} existing file paths")
+        logger.info(f"Found {len(existing_urls)} existing URLs")
+        logger.info(f"Found {len(existing_filepaths)} existing file paths")
         
         return existing_urls, existing_filepaths
         
     except Exception as e:
-        print(f"Error fetching existing data: {e}")
-        print("Proceeding without duplicate filtering...")
+        logger.error(f"Error fetching existing data: {e}", exc_info=True)
+        logger.warning("Proceeding without duplicate filtering...")
         return set(), set()
 
 
@@ -100,21 +105,21 @@ def filter_duplicate_documents(
         
         if doc_url and doc_url in existing_urls:
             is_duplicate = True
-            print(f"Skipping duplicate URL: {doc_url}")
+            logger.debug(f"Skipping duplicate URL: {doc_url}")
         
         if doc_filepath and doc_filepath in existing_filepaths:
             is_duplicate = True
-            print(f"Skipping duplicate file: {doc_filepath}")
+            logger.debug(f"Skipping duplicate file: {doc_filepath}")
         
         if is_duplicate:
             duplicates_count += 1
         else:
             new_documents.append(doc)
     
-    print(f"\n Filtering Results:")
-    print(f"   Total documents: {len(documents)}")
-    print(f"   Duplicates filtered: {duplicates_count}")
-    print(f"   New documents to ingest: {len(new_documents)}")
+    logger.info(f"Filtering Results:")
+    logger.info(f"  Total documents: {len(documents)}")
+    logger.info(f"  Duplicates filtered: {duplicates_count}")
+    logger.info(f"  New documents to ingest: {len(new_documents)}")
     
     return new_documents
 
@@ -139,23 +144,32 @@ def fetch_source_documents(
 
     # Process YouTube videos
     if youtube_urls:
-        print(f"\n📹 Processing YouTube videos...")
-        youtube_documents = process_youtube_videos(youtube_urls)
-        all_documents.extend(youtube_documents)
-        print(f"Loaded {len(youtube_documents)} YouTube documents.")
+        logger.info(f"Processing {len(youtube_urls)} YouTube videos...")
+        try:
+            youtube_documents = process_youtube_videos(youtube_urls)
+            all_documents.extend(youtube_documents)
+            logger.info(f"Loaded {len(youtube_documents)} YouTube documents")
+        except Exception as e:
+            logger.error(f"Failed to process YouTube videos: {e}", exc_info=True)
 
     # Scrape web URLs
     if web_urls:
-        print(f"\n🌐 Processing web URLs...")
-        url_documents = scrape_web_urls(web_urls)
-        all_documents.extend(url_documents)
-        print(f"Loaded {len(url_documents)} web documents.")
+        logger.info(f"Processing {len(web_urls)} web URLs...")
+        try:
+            url_documents = scrape_web_urls(web_urls)
+            all_documents.extend(url_documents)
+            logger.info(f"Loaded {len(url_documents)} web documents")
+        except Exception as e:
+            logger.error(f"Failed to scrape web URLs: {e}", exc_info=True)
 
     # Load Google Drive documents
     if drive_folder_id:
-        print(f"\n Processing Google Drive documents...")
-        drive_documents = convert_drive_documents_to_markdown(drive_folder_id)
-        all_documents.extend(drive_documents)
-        print(f"Loaded {len(drive_documents)} Google Drive documents.")
+        logger.info(f"Processing Google Drive documents from folder: {drive_folder_id}")
+        try:
+            drive_documents = convert_drive_documents_to_markdown(drive_folder_id)
+            all_documents.extend(drive_documents)
+            logger.info(f"Loaded {len(drive_documents)} Google Drive documents")
+        except Exception as e:
+            logger.error(f"Failed to load Google Drive documents: {e}", exc_info=True)
 
     return all_documents

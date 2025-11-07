@@ -11,17 +11,30 @@ The pipeline uses LlamaIndex for document processing and Azure AI for embeddings
 
 # Standard library imports
 import sys
+import logging
 from typing import List, Optional
 import csv
 import os
+from dotenv import load_dotenv
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+logger = logging.getLogger(__name__)
+
+# Load environment variables
+load_dotenv()
+
+# Environment variables
+AZURE_ENDPOINT_EMBEDDING = os.getenv('AZURE_ENDPOINT_EMBEDDING')
+AZURE_API_KEY_EMBEDDING = os.getenv('AZURE_API_KEY_EMBEDDING')
+FOLDER_ID = os.getenv('FOLDER_ID')
 
 # Local application imports
-from config import (
-    get_azure_api_key_embedding,
-    get_azure_endpoint_embedding,
-    get_google_drive_folder_id,
-    RAGPipelineException,
-)
+from config.exceptions import RAGPipelineException
 from config.constants import (
     EMBEDDING_DEPLOYMENT_NAME,
     CHUNK_SIZE,
@@ -58,49 +71,49 @@ def main() -> int:
     Returns:
         int: Exit code (0 for success, 1 for failure)
     """
-  
+    logger.info("=" * 70)
+    logger.info("Starting RAG Data Pipeline")
+    logger.info("=" * 70)
     
     try:
-
-        azure_endpoint = get_azure_endpoint_embedding()
-        azure_api_key = get_azure_api_key_embedding()
-        
-        if not azure_endpoint or not azure_api_key:
-            print("ERROR: Azure embedding credentials not configured")
+        # Validate Azure credentials
+        if not AZURE_ENDPOINT_EMBEDDING or not AZURE_API_KEY_EMBEDDING:
+            logger.error("Azure embedding credentials not configured in environment variables")
+            logger.error("Required: AZURE_ENDPOINT_EMBEDDING, AZURE_API_KEY_EMBEDDING")
             return 1
         
+        logger.info("Azure embedding credentials validated")
 
-        print("Initializing database connection...")
-        db_connection = DatabaseConnection()
-        vector_store = db_connection.get_vector_store()
-        print("Database connection established")
+        # Initialize database connection
+        logger.info("Initializing database connection...")
+        try:
+            db_connection = DatabaseConnection()
+            vector_store = db_connection.get_vector_store()
+            logger.info("Database connection established successfully")
+        except Exception as e:
+            logger.error(f"Failed to establish database connection: {e}", exc_info=True)
+            return 1
         
  
-        print("Creating ingestion pipeline...")
-        pipeline = create_ingestion_pipeline(
-            vector_store=vector_store,
-            endpoint=azure_endpoint,
-            api_key=azure_api_key,
-            deployment=EMBEDDING_DEPLOYMENT_NAME,
-            chunk_size=CHUNK_SIZE,
-            chunk_overlap=CHUNK_OVERLAP
-        )
-        print("Ingestion pipeline created")
+        # Create ingestion pipeline
+        logger.info("Creating ingestion pipeline...")
+        try:
+            pipeline = create_ingestion_pipeline(
+                vector_store=vector_store,
+                endpoint=AZURE_ENDPOINT_EMBEDDING,
+                api_key=AZURE_API_KEY_EMBEDDING,
+                deployment=EMBEDDING_DEPLOYMENT_NAME,
+                chunk_size=CHUNK_SIZE,
+                chunk_overlap=CHUNK_OVERLAP
+            )
+            logger.info("Ingestion pipeline created successfully")
+        except Exception as e:
+            logger.error(f"Failed to create ingestion pipeline: {e}", exc_info=True)
+            return 1
 
-        # # Fetch URLs from GitHub markdown files
-        # print("Fetching data source URLs from GitHub...")
-        
-        # # For demo, using hardcoded URLs - you can uncomment the GitHub fetching
-        # website_urls = ["https://wso2.com/api-management/ai/"]
-        # # website_urls = fetch_website_urls_from_github(GITHUB_WEBSITE_URLS_MD)
-        # print(f"Found {len(website_urls)} website URLs to process")
 
-        # youtube_urls = []
-        # # youtube_urls = fetch_youtube_urls_from_github(GITHUB_YOUTUBE_URLS_MD)
-        # print(f"Found {len(youtube_urls)} YouTube URLs to process")
-
-        print("Fetching data source URLs from CSV file...")
-        
+        # Load URLs from CSV file
+        logger.info("Loading data source URLs from CSV file...")
         csv_path = os.path.join(os.path.dirname(__file__), "data", "URLs.csv")
         website_urls = []
         youtube_urls = []
@@ -109,78 +122,102 @@ def main() -> int:
             with open(csv_path, 'r', encoding='utf-8') as file:
                 csv_reader = csv.DictReader(file)
                 for row in csv_reader:
-
                     if row['Website-URLS'].strip():
                         website_urls.append(row['Website-URLS'].strip())
                     
                     if row['Youtube-URLS'].strip():
                         youtube_urls.append(row['Youtube-URLS'].strip())
             
-            print(f"Found {len(website_urls)} website URLs to process")
-            print(f"Found {len(youtube_urls)} YouTube URLs to process")
-            
+            logger.info(f"Found {len(website_urls)} website URLs to process")
+            logger.info(f"Found {len(youtube_urls)} YouTube URLs to process")
+           
         except FileNotFoundError:
-            print(f"WARNING: CSV file not found at {csv_path}")
-            print("Using empty URL lists")
+            logger.error(f"CSV file not found at {csv_path}")
+            logger.error("Cannot proceed without data source URLs")
+            return 1
+        except KeyError as e:
+            logger.error(f"Missing required column in CSV file: {e}")
+            logger.error("Expected columns: 'Website-URLS', 'Youtube-URLS'")
+            return 1
         except Exception as e:
-            print(f"ERROR: Failed to read CSV file: {e}")
-            print("Using empty URL lists")
+            logger.error(f"Failed to read CSV file: {e}", exc_info=True)
+            return 1
 
 
       
-        drive_folder_id = get_google_drive_folder_id()
-        if drive_folder_id:
-            print(f"Google Drive folder ID configured: {drive_folder_id}")
+        # Check Google Drive configuration
+        if FOLDER_ID:
+            logger.info(f"Google Drive folder ID configured: {FOLDER_ID}")
         else:
-            print("WARNING: No Google Drive folder ID configured")
+            logger.warning("No Google Drive folder ID configured - skipping Google Drive documents")
 
       
-        print("Checking for existing documents in database...")
-        existing_urls, existing_filepaths = get_existing_identifiers(db_connection)
+        # Get existing documents from database
+        logger.info("Checking for existing documents in database...")
+        try:
+            existing_urls, existing_filepaths = get_existing_identifiers(db_connection)
+        except Exception as e:
+            logger.warning(f"Failed to retrieve existing identifiers: {e}")
+            logger.warning("Proceeding without duplicate filtering")
+            existing_urls, existing_filepaths = set(), set()
         
-  
-        print("Fetching documents from all sources...")
-        all_documents = fetch_source_documents(
-            youtube_urls=youtube_urls,
-            web_urls=website_urls,
-            drive_folder_id=drive_folder_id
-        )
-        print(f"Total documents fetched: {len(all_documents)}")
+        # Fetch documents from all sources
+        logger.info("Fetching documents from all sources...")
+        try:
+            all_documents = fetch_source_documents(
+                youtube_urls=youtube_urls,
+                web_urls=website_urls,
+                drive_folder_id=FOLDER_ID
+            )
+            logger.info(f"Total documents fetched: {len(all_documents)}")
+        except Exception as e:
+            logger.error(f"Failed to fetch documents: {e}", exc_info=True)
+            return 1
 
 
-        print("Filtering duplicate documents...")
-        new_documents = filter_duplicate_documents(
-            all_documents,
-            existing_urls,
-            existing_filepaths
-        )
+        # Filter duplicates
+        logger.info("Filtering duplicate documents...")
+        try:
+            new_documents = filter_duplicate_documents(
+                all_documents,
+                existing_urls,
+                existing_filepaths
+            )
+        except Exception as e:
+            logger.error(f"Failed to filter duplicates: {e}", exc_info=True)
+            return 1
 
 
+        # Ingest new documents
         if new_documents:
-            print(f"Starting ingestion of {len(new_documents)} new documents...")
-            ingest_documents(new_documents, pipeline)
-            print("=" * 70)
-            print(f"Pipeline completed successfully!")
-            print(f"Total new documents processed: {len(new_documents)}")
-            print("=" * 70)
+            logger.info(f"Starting ingestion of {len(new_documents)} new documents...")
+            try:
+                ingest_documents(new_documents, pipeline)
+                logger.info("=" * 70)
+                logger.info(f"Pipeline completed successfully!")
+                logger.info(f"Total new documents processed: {len(new_documents)}")
+                logger.info("=" * 70)
+            except Exception as e:
+                logger.error(f"Failed to ingest documents: {e}", exc_info=True)
+                return 1
         else:
-            print("=" * 70)
-            print("WARNING: No new documents to ingest")
-            print("All documents already exist in database")
-            print("=" * 70)
+            logger.warning("=" * 70)
+            logger.warning("No new documents to ingest")
+            logger.warning("All documents already exist in database")
+            logger.warning("=" * 70)
         
         return 0
 
     except RAGPipelineException as e:
-        print("=" * 70)
-        print(f"ERROR: Pipeline error: {e}")
-        print("=" * 70)
+        logger.error("=" * 70)
+        logger.error(f"Pipeline error: {e}", exc_info=True)
+        logger.error("=" * 70)
         return 1
         
     except Exception as e:
-        print("=" * 70)
-        print(f"ERROR: Unexpected error occurred: {e}")
-        print("=" * 70)
+        logger.error("=" * 70)
+        logger.error(f"Unexpected error occurred: {e}", exc_info=True)
+        logger.error("=" * 70)
         return 1
 
 

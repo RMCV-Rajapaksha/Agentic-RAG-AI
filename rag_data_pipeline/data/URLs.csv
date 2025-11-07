@@ -6,3 +6,8 @@ https://wso2.com/identity-and-access-management/ai/,https://www.youtube.com/watc
 https://wso2.com/internal-developer-platform/ai/,https://www.youtube.com/watch?v=banNxyyTSI4
 ,https://www.youtube.com/watch?v=wobNffok7nc
 ,https://www.youtube.com/watch?v=bTj0h5x8W70
+
+change the data file to sources
+and crete defernt two files for URLs - no colomns
+create readme - explain the updating part and how to delete some thing 
+if we update the web site, how we going to add that data into database 

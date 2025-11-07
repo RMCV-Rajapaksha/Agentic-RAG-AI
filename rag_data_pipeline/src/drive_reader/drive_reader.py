@@ -8,6 +8,14 @@ LlamaIndex's GoogleDriveReader with service account authentication.
 # Standard library imports
 from pathlib import Path
 from typing import List
+import os
+import json
+import logging
+import tempfile
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Third-party imports
 import pypandoc
@@ -18,8 +26,52 @@ from markdownify import markdownify as md
 from llama_index.core import Document
 from llama_index.readers.google import GoogleDriveReader
 
-# Local imports
-from config.config import get_google_credentials_json_path
+# Configure logger
+logger = logging.getLogger(__name__)
+
+
+# ===============================
+# Google Credentials Helper
+# ===============================
+
+def get_google_credentials_json_path() -> str:
+    """
+    Create a temporary JSON file with Google service account credentials from environment variables.
+    
+    Returns:
+        Path to temporary JSON file containing credentials
+        
+    Raises:
+        ValueError: If required credentials are missing
+    """
+    try:
+        private_key = os.getenv("GOOGLE_PRIVATE_KEY")
+        if private_key:
+            # Replace escaped newlines with actual newlines
+            private_key = private_key.replace('\\n', '\n')
+        
+        creds = {
+            "type": os.getenv("GOOGLE_TYPE"),
+            "project_id": os.getenv("GOOGLE_PROJECT_ID"),
+            "private_key_id": os.getenv("GOOGLE_PRIVATE_KEY_ID"),
+            "private_key": private_key,
+            "client_email": os.getenv("GOOGLE_CLIENT_EMAIL"),
+            "client_id": os.getenv("GOOGLE_CLIENT_ID"),
+            "auth_uri": os.getenv("GOOGLE_AUTH_URI"),
+            "token_uri": os.getenv("GOOGLE_TOKEN_URI"),
+            "auth_provider_x509_cert_url": os.getenv("GOOGLE_AUTH_PROVIDER_X509_CERT_URL"),
+            "client_x509_cert_url": os.getenv("GOOGLE_CLIENT_X509_CERT_URL"),
+            "universe_domain": os.getenv("GOOGLE_UNIVERSE_DOMAIN"),
+        }
+        
+        temp = tempfile.NamedTemporaryFile(delete=False, suffix='.json', mode='w')
+        json.dump(creds, temp)
+        temp.close()
+        logger.info(f"Created temporary credentials file: {temp.name}")
+        return temp.name
+    except Exception as e:
+        logger.error(f"Error creating credentials file: {e}", exc_info=True)
+        raise ValueError(f"Failed to create credentials file: {e}")
 
 
 # ===============================
@@ -36,18 +88,22 @@ def load_google_drive_documents(folder_id: str):
     Returns:
         List of Document objects with metadata
     """
-    reader = GoogleDriveReader(
-        service_account_key_path=get_google_credentials_json_path()
-    )
-    
-    documents = reader.load_data(folder_id=folder_id)
+    try:
+        reader = GoogleDriveReader(
+            service_account_key_path=get_google_credentials_json_path()
+        )
+        
+        documents = reader.load_data(folder_id=folder_id)
 
-    if not documents:
-        print("No documents were found in the specified folder.")
+        if not documents:
+            logger.warning("No documents were found in the specified folder")
+            return []
+
+        logger.info(f"Successfully loaded {len(documents)} document(s) from Google Drive")
+        return documents
+    except Exception as e:
+        logger.error(f"Failed to load Google Drive documents: {e}", exc_info=True)
         return []
-
-    print(f"Successfully loaded {len(documents)} document(s) from Google Drive.\n")
-    return documents
 
 
 def preview_document(documents, index: int = 0):
@@ -59,13 +115,18 @@ def preview_document(documents, index: int = 0):
         index: Index of the document to preview (default: 0)
     """
     if not documents:
-        print("No documents available to preview.")
+        logger.warning("No documents available to preview")
         return
 
-    doc = documents[index]
-    print("--- Example Document and Metadata ---")
-    print(f"Content Snippet: '{doc.get_content()[:150]}...'")
-    print(f"Metadata: {doc.metadata}\n")
+    try:
+        doc = documents[index]
+        logger.info("--- Example Document and Metadata ---")
+        logger.info(f"Content Snippet: '{doc.get_content()[:150]}...'")
+        logger.info(f"Metadata: {doc.metadata}")
+    except IndexError:
+        logger.error(f"Invalid document index: {index}")
+    except Exception as e:
+        logger.error(f"Error previewing document: {e}", exc_info=True)
 
 
 # ===============================
@@ -95,10 +156,14 @@ def _convert_pdf_document(source: str) -> str:
     Returns:
         Extracted text content as string
     """
-    text = ""
-    with pdfplumber.open(source) as pdf:
-        text = "\n".join([page.extract_text() or "" for page in pdf.pages])
-    return text
+    try:
+        text = ""
+        with pdfplumber.open(source) as pdf:
+            text = "\n".join([page.extract_text() or "" for page in pdf.pages])
+        return text
+    except Exception as e:
+        logger.error(f"Error extracting text from PDF {source}: {e}", exc_info=True)
+        return ""
 
 
 def _convert_text_document(source: str) -> str:
@@ -111,8 +176,12 @@ def _convert_text_document(source: str) -> str:
     Returns:
         Text content as string
     """
-    with open(source, "r", encoding="utf-8") as f:
-        return f.read()
+    try:
+        with open(source, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        logger.error(f"Error reading text file {source}: {e}", exc_info=True)
+        return ""
 
 
 def _convert_html_document(source: str) -> str:
@@ -125,9 +194,13 @@ def _convert_html_document(source: str) -> str:
     Returns:
         Converted Markdown content as string
     """
-    with open(source, "r", encoding="utf-8") as f:
-        html_content = f.read()
-    return md(html_content)
+    try:
+        with open(source, "r", encoding="utf-8") as f:
+            html_content = f.read()
+        return md(html_content)
+    except Exception as e:
+        logger.error(f"Error converting HTML file {source}: {e}", exc_info=True)
+        return ""
 
 
 def convert_document_to_markdown(source: str) -> str:
@@ -155,10 +228,10 @@ def convert_document_to_markdown(source: str) -> str:
         elif ext in [".html", ".htm"]:
             return _convert_html_document(source)
         else:
-            print(f"Unsupported format for {source}")
+            logger.warning(f"Unsupported file format: {ext} for {source}")
             return ""
     except Exception as e:
-        print(f"Error converting {source}: {e}")
+        logger.error(f"Error converting {source}: {e}", exc_info=True)
         return ""
 
 
@@ -197,7 +270,7 @@ def convert_drive_documents_to_markdown(folder_id: str) -> List[Document]:
     for doc in drive_documents:
         if 'file_path' in doc.metadata:
             file_path = doc.metadata['file_path']
-            print(f"Converting document from Google Drive: {file_path}")
+            logger.info(f"Converting document from Google Drive: {file_path}")
             markdown_content = convert_document_to_markdown(file_path)
 
             if markdown_content:
@@ -216,6 +289,8 @@ def convert_drive_documents_to_markdown(folder_id: str) -> List[Document]:
                     }
                 )
                 documents.append(converted_doc)
+            else:
+                logger.warning(f"Failed to convert document: {file_path}")
         else:
             # For documents without file_path, add metadata
             file_name = doc.metadata.get('file_name', 'unknown')
@@ -225,6 +300,7 @@ def convert_drive_documents_to_markdown(folder_id: str) -> List[Document]:
             doc.metadata['url'] = f"gdrive://{folder_id}/{file_name}"
             documents.append(doc)
 
+    logger.info(f"Converted {len(documents)} documents from Google Drive")
     return documents
 
 

@@ -8,6 +8,9 @@ for the RAG data ingestion pipeline using PostgreSQL with pgvector.
 # Standard library imports
 from typing import Optional, Tuple, Set
 import asyncio
+import logging
+import os
+from dotenv import load_dotenv
 
 # Third-party imports
 from sqlalchemy import make_url
@@ -17,12 +20,7 @@ import asyncpg
 from llama_index.vector_stores.postgres import PGVectorStore
 
 # Local imports
-from config import (
-    get_db_connection_string,
-    get_db_name,
-    get_db_table_name,
-    DatabaseConnectionError,
-)
+from config.exceptions import DatabaseConnectionError
 from config.constants import (
     HNSW_M,
     HNSW_EF_CONSTRUCTION,
@@ -31,6 +29,17 @@ from config.constants import (
     EMBEDDING_DIMENSION,
 
 )
+
+# Configure logger
+logger = logging.getLogger(__name__)
+
+# Load environment variables
+load_dotenv()
+
+# Environment variables
+DB_NAME = os.getenv('DB_NAME')
+CONNECTION_STRING = os.getenv('CONNECTION_STRING')
+DB_TABLE_NAME = os.getenv('DB_TABLE_NAME')
 
 
 # ===============================
@@ -61,13 +70,20 @@ class DatabaseConnection:
             DatabaseConnectionError: If required configuration is missing
         """
         try:
-            self.connection_string = get_db_connection_string()
-            self.db_name = get_db_name()
-            self.table_name = get_db_table_name()
-            print(f"Database configuration loaded: {self.db_name}/{self.table_name}")
+            if not CONNECTION_STRING:
+                raise ValueError("Missing required environment variable: CONNECTION_STRING")
+            if not DB_NAME:
+                raise ValueError("Missing required environment variable: DB_NAME")
+            if not DB_TABLE_NAME:
+                raise ValueError("Missing required environment variable: DB_TABLE_NAME")
+                
+            self.connection_string = CONNECTION_STRING
+            self.db_name = DB_NAME
+            self.table_name = DB_TABLE_NAME
+            logger.info(f"Database configuration loaded: {self.db_name}/{self.table_name}")
         except Exception as e:
             error_msg = "Database connection failed: {}".format(str(e))
-            print(f"ERROR: {error_msg}")
+            logger.error(error_msg, exc_info=True)
             raise DatabaseConnectionError(error_msg)
         
     def get_vector_store(self, embed_dim: int = EMBEDDING_DIMENSION) -> PGVectorStore:
@@ -86,7 +102,7 @@ class DatabaseConnection:
         try:
             url = make_url(self.connection_string)
             
-            print(f"Creating vector store connection to {url.host}:{url.port}")
+            logger.info(f"Creating vector store connection to {url.host}:{url.port}")
             
             vector_store = PGVectorStore.from_params(
                 database=self.db_name,
@@ -104,12 +120,12 @@ class DatabaseConnection:
                 },
             )
             
-            print("Vector store created successfully")
+            logger.info("Vector store created successfully")
             return vector_store
             
         except Exception as e:
             error_msg = "Database connection failed: {}".format(str(e))
-            print(f"ERROR: {error_msg}")
+            logger.error(error_msg, exc_info=True)
             raise DatabaseConnectionError(error_msg)
     
     async def get_all_metadata_async(self) -> Tuple[list, Set[str], Set[str]]:
@@ -137,7 +153,7 @@ class DatabaseConnection:
                 database=self.db_name
             )
             
-            print(f"Connected to database for metadata retrieval")
+            logger.info(f"Connected to database for metadata retrieval")
             
             try:
                 # Query to get all data
@@ -152,7 +168,7 @@ class DatabaseConnection:
                 """
                 
                 result = await conn.fetch(query)
-                print(f"Retrieved {len(result)} records from database")
+                logger.info(f"Retrieved {len(result)} records from database")
                 
                 # Convert to list of dicts and extract URLs and file paths
                 rows = []
@@ -177,16 +193,16 @@ class DatabaseConnection:
                         if 'file_path' in metadata and metadata['file_path']:
                             filepaths.add(metadata['file_path'])
                 
-                print(f"Found {len(urls)} unique URLs and {len(filepaths)} unique file paths")
+                logger.info(f"Found {len(urls)} unique URLs and {len(filepaths)} unique file paths")
                 return rows, urls, filepaths
                 
             finally:
                 await conn.close()
-                print("Database connection closed")
+                logger.debug("Database connection closed")
                 
         except Exception as e:
             error_msg = f"Failed to retrieve metadata: {str(e)}"
-            print(f"ERROR: {error_msg}")
+            logger.error(error_msg, exc_info=True)
             raise DatabaseConnectionError(error_msg)
     
     def get_all_metadata(self) -> Tuple[list, Set[str], Set[str]]:
@@ -203,9 +219,9 @@ class DatabaseConnection:
             DatabaseConnectionError: If database query fails
         """
         try:
-            print("Fetching metadata from database (synchronous call)")
+            logger.debug("Fetching metadata from database (synchronous call)")
             return asyncio.run(self.get_all_metadata_async())
         except Exception as e:
             error_msg = f"Failed to retrieve metadata: {str(e)}"
-            print(f"ERROR: {error_msg}")
+            logger.error(error_msg, exc_info=True)
             raise DatabaseConnectionError(error_msg)

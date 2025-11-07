@@ -10,7 +10,12 @@ transcript into structured Markdown with headings and preserved timing informati
 import os
 import re
 import sys
+import logging
 from typing import List
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Third-party imports
 import requests
@@ -22,16 +27,11 @@ from llama_index.core import Document
 from llama_index.core.llms import ChatMessage
 from llama_index.llms.azure_openai import AzureOpenAI
 
+# Configure logger
+logger = logging.getLogger(__name__)
+
 # Local imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-from config.config import (
-    get_azure_openai_api_key,
-    get_azure_openai_api_version,
-    get_azure_openai_deployment_name,
-    get_azure_openai_endpoint,
-    get_azure_openai_model,
-    get_openai_api_key,
-)
 from config.constants import (
     YOUTUBE_TRANSCRIPT_FORMAT_INSTRUCTIONS
 )
@@ -40,20 +40,21 @@ from config.constants import (
 # ===============================
 # Configuration
 # ===============================
-os.environ["OPENAI_API_KEY"] = get_openai_api_key()
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+AZURE_OPENAI_MODEL = os.getenv('AZURE_OPENAI_MODEL')
+AZURE_OPENAI_DEPLOYMENT_NAME = os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME')
+AZURE_OPENAI_API_KEY = os.getenv('AZURE_OPENAI_API_KEY')
+AZURE_OPENAI_ENDPOINT = os.getenv('AZURE_OPENAI_ENDPOINT')
+AZURE_OPENAI_API_VERSION = os.getenv('AZURE_OPENAI_API_VERSION')
 
-MODEL = get_azure_openai_model()
-DEPLOYMENT_NAME = get_azure_openai_deployment_name()
-AZURE_CREDENTIAL = get_azure_openai_api_key()
-AZURE_ENDPOINT = get_azure_openai_endpoint()
-API_VERSION = get_azure_openai_api_version()
+os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 
 llm = AzureOpenAI(
-    model=MODEL,
-    deployment_name=DEPLOYMENT_NAME,
-    api_key=AZURE_CREDENTIAL,
-    azure_endpoint=AZURE_ENDPOINT,
-    api_version=API_VERSION
+    model=AZURE_OPENAI_MODEL,
+    deployment_name=AZURE_OPENAI_DEPLOYMENT_NAME,
+    api_key=AZURE_OPENAI_API_KEY,
+    azure_endpoint=AZURE_OPENAI_ENDPOINT,
+    api_version=AZURE_OPENAI_API_VERSION
 )
 
 
@@ -108,12 +109,14 @@ def fetch_metadata(url: str) -> dict:
             else "No description found"
         )
         
+        logger.debug(f"Fetched metadata for {url}: {title}")
         return {
             "title": title.strip(),
             "description": description.strip(),
             "url": url
         }
     except Exception as e:
+        logger.error(f"Error fetching metadata for {url}: {e}", exc_info=True)
         return {
             "title": "Unknown",
             "description": f"Error fetching metadata: {e}",
@@ -213,28 +216,25 @@ def process_segment_content(
     
     content_with_timestamps = "\n".join(timestamped_content)
 
-    print("-----------------------------")
-    print(content_with_timestamps)
-    print("-----------------------------")
+    logger.debug(f"Processing segment {segment_index}: {start_time} - {end_time}")
+    logger.debug(f"Segment content length: {len(content_with_timestamps)} characters")
     
     # Convert to markdown using LLM
     try:
-       
         messages = [
             ChatMessage(role="user", content=YOUTUBE_TRANSCRIPT_FORMAT_INSTRUCTIONS), 
             ChatMessage(role="user", content=content_with_timestamps)
         ]
         response = llm.chat(messages)
 
-        print("-----------------------------")
-        print("LLM response:", response.message.content)
-        print("-----------------------------")
+        logger.debug(f"LLM formatting completed for segment {segment_index}")
 
         markdown_content = (
             f"**Time Range: {start_time} - {end_time}**\n\n"
             f"{response.message.content}"
         )
     except Exception as e:
+        logger.error(f"Error processing segment {segment_index} with LLM: {e}", exc_info=True)
         markdown_content = (
             f"**Time Range: {start_time} - {end_time}**\n\n"
             f"Error processing content: {e}\n\n"
@@ -273,6 +273,7 @@ def get_transcript_segments(
     try:
         video_id = get_video_id(url)
     except Exception as e:
+        logger.error(f"Failed to extract video ID from {url}: {e}")
         metadata = fetch_metadata(url)
         return {
             "url": url,
@@ -290,8 +291,11 @@ def get_transcript_segments(
         ytt_api = YouTubeTranscriptApi()
         transcript = ytt_api.fetch(video_id, languages=[language])
         
+        logger.info(f"Fetched transcript for video {video_id}")
+        
         # Segment the transcript
         segments = segment_transcript(transcript, segment_length)
+        logger.info(f"Segmented transcript into {len(segments)} segments")
         
         # Process each segment
         processed_segments = []
@@ -301,6 +305,8 @@ def get_transcript_segments(
             )
             processed_segments.append(processed_segment)
         
+        logger.info(f"Processed all {len(processed_segments)} segments for video {video_id}")
+        
         return {
             "url": url,
             "metadata": metadata,
@@ -308,6 +314,7 @@ def get_transcript_segments(
         }
         
     except Exception as e:
+        logger.error(f"Error fetching transcript for {url}: {e}", exc_info=True)
         return {
             "url": url,
             "metadata": metadata,
@@ -317,41 +324,6 @@ def get_transcript_segments(
                 "content_markdown": f"Transcript not available: {e}"
             }]
         }
-
-
-def get_transcript(
-    url: str,
-    language: str = "en",
-    segment_length_minutes: int = 10
-) -> dict:
-    """
-    Get full transcript as single markdown with timestamps.
-    
-    Args:
-        url: YouTube video URL
-        language: Language code for transcript (default: "en")
-        segment_length_minutes: Length of each segment in minutes (default: 10)
-        
-    Returns:
-        Dictionary with 'url', 'metadata', 'content_markdown' (combined from all segments)
-    """
-    result = get_transcript_segments(url, language, segment_length_minutes)
-    
-    # Combine all segments into one markdown with timestamps
-    combined_markdown = ""
-    for i, segment in enumerate(result["segments"], 1):
-        start_time = seconds_to_timestamp(segment["start_seconds"])
-        end_time = seconds_to_timestamp(segment["end_seconds"])
-        combined_markdown += (
-            f"\n\n## Segment {i} ({start_time} - {end_time})\n\n"
-        )
-        combined_markdown += segment["content_markdown"]
-    
-    return {
-        "url": result["url"],
-        "metadata": result["metadata"],
-        "content_markdown": combined_markdown.strip()
-    }
 
 
 def process_youtube_videos(
@@ -369,7 +341,7 @@ def process_youtube_videos(
         List of Document objects, one per segment
     """
     documents = []
-    print("Processing YouTube videos for transcript segments...")
+    logger.info(f"Processing {len(urls)} YouTube videos for transcript segments...")
     
     for link in urls:
         try:
@@ -393,11 +365,12 @@ def process_youtube_videos(
                 )
                 documents.append(video_doc)
             
-            print(f"Processed {len(video_data['segments'])} segments from {link}")
+            logger.info(f"Processed {len(video_data['segments'])} segments from {link}")
             
         except Exception as e:
-            print(f"Error processing YouTube video {link}: {e}")
+            logger.error(f"Error processing YouTube video {link}: {e}", exc_info=True)
     
+    logger.info(f"Total YouTube documents processed: {len(documents)}")
     return documents
 
 
@@ -420,9 +393,9 @@ def fetch_youtube_urls_from_github(github_md_url: str) -> List[str]:
         youtube_url_pattern = r'https://www\.youtube\.com/watch\?v=[\w-]+'
         urls_to_videos = re.findall(youtube_url_pattern, md_content)
         
-        print(f"Found {len(urls_to_videos)} YouTube URLs from markdown file")
+        logger.info(f"Found {len(urls_to_videos)} YouTube URLs from markdown file")
         return urls_to_videos
         
     except Exception as e:
-        print(f"Error fetching URLs from markdown: {e}")
+        logger.error(f"Error fetching URLs from markdown: {e}", exc_info=True)
         return []
