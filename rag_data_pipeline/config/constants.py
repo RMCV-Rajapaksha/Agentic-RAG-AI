@@ -18,7 +18,7 @@ EMBEDDING_DIMENSION = 1536
 # ===============================
 CHUNK_SIZE = 512
 CHUNK_OVERLAP = 100
-SIMILARITY_TOP_K = 10
+
 
 # ===============================
 # YouTube Processing Configuration
@@ -53,28 +53,30 @@ GITHUB_WEBSITE_URLS_MD = (
     "Agentic-RAG-AI/main/WebURLs.md"
 )
 
-# ===============================
-# Logging Configuration
-# ===============================
-LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
-LOG_LEVEL_DEFAULT = "INFO"
-
+#
 # ===============================
 # LLM Instructions
 # ===============================
-YOUTUBE_TRANSCRIPT_FORMAT_INSTRUCTIONS = """You are a formatter. 
-Your ONLY job is to take the given text and reformat it into Markdown. 
-Do not summarize, drop any content, or change the wording of the paragraph text. 
-Keep all words exactly as provided for the paragraph/description. 
-Generate headings only for key or important points. Only these headings should have timestamps.  
+YOUTUBE_TRANSCRIPT_FORMAT_INSTRUCTIONS = """
+You are a formatter.
+Your ONLY job is to take the given transcript text and reformat it into clean, written-style Markdown paragraphs.
+Do NOT summarize, drop, or modify any content.
+Do NOT hallucinate, rephrase, or rewrite sentences.
+Keep all words exactly as provided — only adjust structure and formatting for readability.
 
-Rules:
-- Generate meaningful headings based on key points in the transcript.  
-- Use # for main sections, ## for subsections, ### for sub-subsections.  
-- Include timestamps in headings only for very important points.  
-- Timestamps should use the format [seconds.s], e.g., [4460.32s], not hh:mm:ss.  
-- All other sentences remain as paragraphs under the nearest heading.  
+Formatting Rules:
+- Keep all timestamps exactly as provided, in seconds format (e.g., [123.45s]).
+- Use timestamps ONLY in the headings, not in the paragraph text.
+- Generate meaningful Markdown headings for key or important sections.
+- Use:
+  - # for main sections
+  - ## for subsections
+  - ### for sub-subsections
+- Include timestamps in headings only for important sections.
+- Merge consecutive lines into natural, written-form paragraphs under the relevant heading.
+- Do NOT infer, add, or modify information.
+- Paragraph text should read like normal written text, not like a transcript or dialogue.
+- Do NOT include timestamps within the body paragraphs.
 
 Example:
 
@@ -86,54 +88,9 @@ Input:
 
 Output:
 # [3.00s] Introduction to Retrieval-Augmented Generation
-retrieval augmented generation over
-video corpus now we all know rag
+Retrieval augmented generation over a video corpus. Now we all know RAG.
 
 ## [8.00s] Query Processing in RAG
-retrieval augmented generation we put in a query then it goes and get the retrieval query asking a database
-and we get back the retrieved text and then we construct the full prompt and we get the response
+Retrieval augmented generation allows us to put in a query that retrieves relevant data from a database. 
+We then use the retrieved text to construct the full prompt and get the final response.
 """
-
-# ===============================
-# File Format Support
-# ===============================
-SUPPORTED_DOCUMENT_FORMATS = {
-    ".docx": "Microsoft Word",
-    ".pptx": "Microsoft PowerPoint",
-    ".odt": "OpenDocument Text",
-    ".pdf": "Portable Document Format",
-    ".txt": "Plain Text",
-    ".html": "HyperText Markup Language",
-    ".htm": "HyperText Markup Language"
-}
-
-# ===============================
-# Validation Rules
-# ===============================
-REQUIRED_ENV_VARIABLES = [
-    "DB_NAME",
-    "CONNECTION_STRING",
-    "DB_TABLE_NAME",
-]
-
-REQUIRED_ENV_VARIABLES_PRODUCTION = REQUIRED_ENV_VARIABLES + [
-    "AZURE_OPENAI_API_KEY",
-    "AZURE_OPENAI_ENDPOINT",
-    "AZURE_API_KEY_EMBEDDING",
-    "AZURE_ENDPOINT_EMBEDDING",
-]
-
-REQUIRED_ENV_VARIABLES_DEVELOPMENT = REQUIRED_ENV_VARIABLES + [
-    "OPENAI_API_KEY",
-]
-
-# ===============================
-# Error Messages
-# ===============================
-ERROR_MSG_MISSING_ENV_VAR = "Missing required environment variable: {}"
-ERROR_MSG_INVALID_URL = "Invalid URL format: {}"
-ERROR_MSG_DB_CONNECTION_FAILED = "Database connection failed: {}"
-ERROR_MSG_DOCUMENT_CONVERSION_FAILED = "Document conversion failed for {}: {}"
-ERROR_MSG_EMBEDDING_FAILED = "Embedding generation failed: {}"
-ERROR_MSG_INVALID_VIDEO_ID = "Could not extract video ID from URL: {}"
-ERROR_MSG_TRANSCRIPT_UNAVAILABLE = "Transcript not available for video: {}"

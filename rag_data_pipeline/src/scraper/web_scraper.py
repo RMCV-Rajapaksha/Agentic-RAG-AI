@@ -23,7 +23,9 @@ from llama_index.core import Document
 # ===============================
 # Constants
 # ===============================
-BASE_URL = "https://wso2.com"
+from config.constants import (
+    WEB_SCRAPER_BASE_URL
+)
 
 
 # ===============================
@@ -168,7 +170,7 @@ def get_markdown(url, scraper=None):
 # URL Filtering Functions
 # ===============================
 
-def _convert_to_absolute_url(link, base_url=BASE_URL):
+def _convert_to_absolute_url(link, base_url=WEB_SCRAPER_BASE_URL):
     """
     Convert relative URLs to absolute URLs.
 
@@ -201,7 +203,7 @@ def _is_valid_url(url):
     )
 
 
-def get_urls(url, scraper=None, base_url=BASE_URL):
+def get_urls(url, scraper=None, base_url=WEB_SCRAPER_BASE_URL):
     """
     Extract and filter relevant URLs from the webpage.
 
@@ -277,7 +279,7 @@ def fetch_website_urls_from_github(github_md_url: str) -> List[str]:
         response.raise_for_status()
         md_content = response.text
 
-        # Extract website URLs using regex
+     
         website_url_pattern = r'https?://\S+'
         urls_to_websites = re.findall(website_url_pattern, md_content)
 

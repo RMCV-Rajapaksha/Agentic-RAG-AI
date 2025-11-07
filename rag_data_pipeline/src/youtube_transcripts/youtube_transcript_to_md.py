@@ -32,6 +32,9 @@ from config.config import (
     get_azure_openai_model,
     get_openai_api_key,
 )
+from config.constants import (
+    YOUTUBE_TRANSCRIPT_FORMAT_INSTRUCTIONS
+)
 
 
 # ===============================
@@ -53,39 +56,6 @@ llm = AzureOpenAI(
     api_version=API_VERSION
 )
 
-# ===============================
-# LLM Instructions
-# ===============================
-INSTRUCTIONS_FOR_LLM = """You are a formatter. 
-Your ONLY job is to take the given text and reformat it into Markdown. 
-Do not summarize, drop any content, or change the wording of the paragraph text. 
-Keep all words exactly as provided for the paragraph/description. 
-Generate headings only for key or important points. Only these headings should have timestamps.  
-
-Rules:
-- Generate meaningful headings based on key points in the transcript.  
-- Use # for main sections, ## for subsections, ### for sub-subsections.  
-- Include timestamps in headings only for very important points.  
-- Timestamps should use the format [seconds.s], e.g., [4460.32s], not hh:mm:ss.  
-- All other sentences remain as paragraphs under the nearest heading.  
-
-Example:
-
-Input:
-[3.00s] retrieval augmented generation over
-[5.00s] video corpus now we all know rag
-[8.00s] retrieval augmented generation we put in a query then it goes and get the retrieval query asking a database
-[12.00s] and we get back the retrieved text and then we construct the full prompt and we get the response
-
-Output:
-# [3.00s] Introduction to Retrieval-Augmented Generation
-retrieval augmented generation over
-video corpus now we all know rag
-
-## [8.00s] Query Processing in RAG
-retrieval augmented generation we put in a query then it goes and get the retrieval query asking a database
-and we get back the retrieved text and then we construct the full prompt and we get the response
-"""
 
 
 # ===============================
@@ -249,12 +219,9 @@ def process_segment_content(
     
     # Convert to markdown using LLM
     try:
-        enhanced_instructions = INSTRUCTIONS_FOR_LLM + """
-        Keep all timestamps in the format [XXX.XXs] at the beginning of each line.
-        Preserve the timestamp information exactly as provided in seconds format.
-        """
+       
         messages = [
-            ChatMessage(role="user", content=enhanced_instructions), 
+            ChatMessage(role="user", content=YOUTUBE_TRANSCRIPT_FORMAT_INSTRUCTIONS), 
             ChatMessage(role="user", content=content_with_timestamps)
         ]
         response = llm.chat(messages)
@@ -459,27 +426,3 @@ def fetch_youtube_urls_from_github(github_md_url: str) -> List[str]:
     except Exception as e:
         print(f"Error fetching URLs from markdown: {e}")
         return []
-
-
-# ===============================
-# Example Usage
-# ===============================
-if __name__ == "__main__":
-    yt_url = "https://www.youtube.com/watch?v=LtcHVLkkxjk"
-    
-    # Get segmented transcript with 10-minute segments
-    result = get_transcript_segments(
-        yt_url, language="en", segment_length_minutes=10
-    )
-
-    print("Video URL:", result["url"])
-    print("Metadata:", result["metadata"])
-    
-    # Print first few segments
-    for i, segment in enumerate(result["segments"][:3]):
-        print(f"\n=== Segment {i + 1} ===")
-        print(f"Time: {segment['start_seconds']} - {segment['end_seconds']} seconds")
-        print(f"Content preview: {segment['content_markdown'][:200]}...")
-        
-        if i >= 2:  # Limit output for demo
-            break
