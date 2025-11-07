@@ -57,13 +57,13 @@ def get_existing_identifiers(
             if r['metadata'].get('file_path')
         }
         
-        print(f"✅ Found {len(existing_urls)} existing URLs")
-        print(f"✅ Found {len(existing_filepaths)} existing file paths")
+        print(f"Found {len(existing_urls)} existing URLs")
+        print(f"Found {len(existing_filepaths)} existing file paths")
         
         return existing_urls, existing_filepaths
         
     except Exception as e:
-        print(f"⚠️ Error fetching existing data: {e}")
+        print(f"Error fetching existing data: {e}")
         print("Proceeding without duplicate filtering...")
         return set(), set()
 
@@ -100,18 +100,18 @@ def filter_duplicate_documents(
         
         if doc_url and doc_url in existing_urls:
             is_duplicate = True
-            print(f"⏭️  Skipping duplicate URL: {doc_url}")
+            print(f"Skipping duplicate URL: {doc_url}")
         
         if doc_filepath and doc_filepath in existing_filepaths:
             is_duplicate = True
-            print(f"⏭️  Skipping duplicate file: {doc_filepath}")
+            print(f"Skipping duplicate file: {doc_filepath}")
         
         if is_duplicate:
             duplicates_count += 1
         else:
             new_documents.append(doc)
     
-    print(f"\n📊 Filtering Results:")
+    print(f"\n Filtering Results:")
     print(f"   Total documents: {len(documents)}")
     print(f"   Duplicates filtered: {duplicates_count}")
     print(f"   New documents to ingest: {len(new_documents)}")
@@ -142,20 +142,20 @@ def fetch_source_documents(
         print(f"\n📹 Processing YouTube videos...")
         youtube_documents = process_youtube_videos(youtube_urls)
         all_documents.extend(youtube_documents)
-        print(f"✅ Loaded {len(youtube_documents)} YouTube documents.")
+        print(f"Loaded {len(youtube_documents)} YouTube documents.")
 
     # Scrape web URLs
     if web_urls:
         print(f"\n🌐 Processing web URLs...")
         url_documents = scrape_web_urls(web_urls)
         all_documents.extend(url_documents)
-        print(f"✅ Loaded {len(url_documents)} web documents.")
+        print(f"Loaded {len(url_documents)} web documents.")
 
     # Load Google Drive documents
     if drive_folder_id:
-        print(f"\n📁 Processing Google Drive documents...")
+        print(f"\n Processing Google Drive documents...")
         drive_documents = convert_drive_documents_to_markdown(drive_folder_id)
         all_documents.extend(drive_documents)
-        print(f"✅ Loaded {len(drive_documents)} Google Drive documents.")
+        print(f"Loaded {len(drive_documents)} Google Drive documents.")
 
     return all_documents

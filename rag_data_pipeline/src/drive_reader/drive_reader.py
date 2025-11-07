@@ -212,7 +212,6 @@ def convert_drive_documents_to_markdown(folder_id: str) -> List[Document]:
                         'original_file_path': file_path,
                         'file_name': file_name,
                         'type': 'converted_document',
-                        # Add a unique URL-like identifier for duplicate checking
                         'url': f"gdrive://{folder_id}/{file_name}"
                     }
                 )
@@ -229,9 +228,6 @@ def convert_drive_documents_to_markdown(folder_id: str) -> List[Document]:
     return documents
 
 
-# ===============================
-# Example Usage
-# ===============================
 if __name__ == "__main__":
     # Replace with your actual folder ID
     folder_id = "---"  
