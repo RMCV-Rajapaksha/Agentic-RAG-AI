@@ -36,7 +36,7 @@ FOLDER_ID = os.getenv('FOLDER_ID')
 # Local application imports
 from config.exceptions import RAGPipelineException
 
-
+from database import DatabaseConnection
 from src.pipeline import ingest_documents
 
 from src.utils import (
@@ -46,7 +46,9 @@ from src.utils import (
 
 
 
-
+# ===============================
+# Main Entry Point
+# ===============================
 def main() -> int:
     """
     Main entry point for the RAG data pipeline.
@@ -67,7 +69,7 @@ def main() -> int:
     
     try:
         
-        
+        db_connection = DatabaseConnection()
 
         
  
@@ -75,48 +77,48 @@ def main() -> int:
         # Load URLs from CSV file
         logger.info("Loading data source URLs from CSV file...")
         csv_path = os.path.join(os.path.dirname(__file__), "data", "URLs.csv")
-        website_urls = []
+        website_urls = ["https://wso2.com/integration/ai/"]
         youtube_urls = []
         
-        try:
-            with open(csv_path, 'r', encoding='utf-8') as file:
-                csv_reader = csv.DictReader(file)
-                row_count = 0
+        # try:
+        #     with open(csv_path, 'r', encoding='utf-8') as file:
+        #         csv_reader = csv.DictReader(file)
+        #         row_count = 0
                 
-                for row in csv_reader:
-                    row_count += 1
+        #         for row in csv_reader:
+        #             row_count += 1
                     
-                    # Safely process Website URLs
-                    website_url = row.get('Website-URLS')
-                    if website_url and website_url.strip():
-                        website_urls.append(website_url.strip())
+        #             # Safely process Website URLs
+        #             website_url = row.get('Website-URLS')
+        #             if website_url and website_url.strip():
+        #                 website_urls.append(website_url.strip())
                     
-                    # Safely process YouTube URLs
-                    youtube_url = row.get('Youtube-URLS')
-                    if youtube_url and youtube_url.strip():
-                        youtube_urls.append(youtube_url.strip())
+        #             # Safely process YouTube URLs
+        #             youtube_url = row.get('Youtube-URLS')
+        #             if youtube_url and youtube_url.strip():
+        #                 youtube_urls.append(youtube_url.strip())
             
-            logger.info(f"Processed {row_count} rows from CSV file")
-            logger.info(f"Found {len(website_urls)} website URLs to process")
-            logger.info(f"Found {len(youtube_urls)} YouTube URLs to process")
+        #     logger.info(f"Processed {row_count} rows from CSV file")
+        #     logger.info(f"Found {len(website_urls)} website URLs to process")
+        #     logger.info(f"Found {len(youtube_urls)} YouTube URLs to process")
             
-            # Validate that we have at least some URLs
-            if not website_urls and not youtube_urls and not FOLDER_ID:
-                logger.warning("No URLs found in CSV and no Google Drive folder configured")
-                logger.warning("Pipeline will have no documents to process")
-                return 0
+        #     # Validate that we have at least some URLs
+        #     if not website_urls and not youtube_urls and not FOLDER_ID:
+        #         logger.warning("No URLs found in CSV and no Google Drive folder configured")
+        #         logger.warning("Pipeline will have no documents to process")
+        #         return 0
            
-        except FileNotFoundError:
-            logger.error(f"CSV file not found at {csv_path}")
-            logger.error("Cannot proceed without data source URLs")
-            return 1
-        except KeyError as e:
-            logger.error(f"Missing required column in CSV file: {e}")
-            logger.error("Expected columns: 'Website-URLS', 'Youtube-URLS'")
-            return 1
-        except Exception as e:
-            logger.error(f"Failed to read CSV file: {e}", exc_info=True)
-            return 1
+        # except FileNotFoundError:
+        #     logger.error(f"CSV file not found at {csv_path}")
+        #     logger.error("Cannot proceed without data source URLs")
+        #     return 1
+        # except KeyError as e:
+        #     logger.error(f"Missing required column in CSV file: {e}")
+        #     logger.error("Expected columns: 'Website-URLS', 'Youtube-URLS'")
+        #     return 1
+        # except Exception as e:
+        #     logger.error(f"Failed to read CSV file: {e}", exc_info=True)
+        #     return 1
 
 
         # Check Google Drive configuration
@@ -197,7 +199,7 @@ def main() -> int:
         if all_documents:
             logger.info(f"Starting ingestion of {len(all_documents)} new documents...")
             try:
-                ingest_documents(all_documents, pipeline)
+                ingest_documents(all_documents)
                 logger.info("=" * 70)
                 logger.info(f"Pipeline completed successfully!")
                 logger.info(f"Total new documents processed: {len(all_documents)}")

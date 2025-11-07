@@ -13,12 +13,14 @@ from typing import List
 import os
 
 from dotenv import load_dotenv
+from sqlalchemy import make_url
 
 
 from llama_index.core import Document
 from llama_index.core.extractors import TitleExtractor
 from llama_index.core.ingestion import IngestionPipeline
 from llama_index.core.node_parser import MarkdownNodeParser
+from llama_index.vector_stores.postgres import PGVectorStore
 
 from database.db import DatabaseConnection
 from src.embeddings.azure_embedding import AzureAIEmbedding
@@ -32,6 +34,15 @@ from config.constants import (
 )
 
 
+from config.constants import (
+    HNSW_M,
+    HNSW_EF_CONSTRUCTION,
+    HNSW_EF_SEARCH,
+    HNSW_DISTANCE_METHOD,
+    EMBEDDING_DIMENSION,
+
+)
+
 # Configure logger
 logger = logging.getLogger(__name__)
 
@@ -42,8 +53,13 @@ load_dotenv()
 
 AZURE_ENDPOINT_EMBEDDING = os.getenv('AZURE_ENDPOINT_EMBEDDING')
 AZURE_API_KEY_EMBEDDING = os.getenv('AZURE_API_KEY_EMBEDDING')
+DB_NAME = os.getenv('DB_NAME')
+CONNECTION_STRING = os.getenv('CONNECTION_STRING')
+DB_TABLE_NAME = os.getenv('DB_TABLE_NAME')
 
-# The embedding model can be global as it's stateless and reusable
+
+
+
 EMBEDDING_MODEL = AzureAIEmbedding(
         endpoint=AZURE_ENDPOINT_EMBEDDING,
         api_key=AZURE_API_KEY_EMBEDDING,
@@ -51,7 +67,23 @@ EMBEDDING_MODEL = AzureAIEmbedding(
         embed_dim=1536
     )
 
+url = make_url(CONNECTION_STRING)
 
+VECTOR_STORE = PGVectorStore.from_params(
+                database=DB_NAME,
+                host=url.host,
+                password=url.password,
+                port=url.port,
+                user=url.username,
+                table_name=DB_TABLE_NAME,
+                embed_dim=EMBEDDING_DIMENSION,
+                hnsw_kwargs={
+                    "hnsw_m": HNSW_M,
+                    "hnsw_ef_construction": HNSW_EF_CONSTRUCTION,
+                    "hnsw_ef_search": HNSW_EF_SEARCH,
+                    "hnsw_dist_method": HNSW_DISTANCE_METHOD,
+                },
+            )
 
 def ingest_documents(
     documents: List[Document],
@@ -70,10 +102,8 @@ def ingest_documents(
         return
 
     try:
-        # --- Create DB connection and pipeline here ---
-        logger.info("Connecting to database to get vector store...")
-        db_connection = DatabaseConnection()
-        vector_store = db_connection.get_vector_store()
+       
+       
         
         logger.info("Building ingestion pipeline...")
         pipeline = IngestionPipeline(
@@ -87,7 +117,7 @@ def ingest_documents(
                 TitleExtractor(),
                 EMBEDDING_MODEL  # Use the global embedding model
             ],
-            vector_store=vector_store # Use the freshly created vector store
+            vector_store=VECTOR_STORE # Use the freshly created vector store
         )
 
         logger.info(f"Ingesting {len(documents)} document(s)...")
